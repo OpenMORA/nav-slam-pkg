@@ -26,4 +26,5 @@ DEFINE_MORA_PROGRAM(Localization2D_Fusion)
 DEFINE_MORA_PROGRAM(Localization2D_PF)
 DEFINE_MORA_PROGRAM(NavigatorReactivePTG)
 DEFINE_MORA_PROGRAM(NavigatorReactivePTG3D)
+DEFINE_MORA_PROGRAM(JoystickControl)
 
