@@ -1,0 +1,697 @@
+
+/////////////////////////////////////////////
+// Antler configuration  block
+/////////////////////////////////////////////
+
+ProcessConfig = ANTLER
+{
+	MSBetweenLaunches 	= 200
+	ExecutablePath		= 
+	
+	//crucial processes
+
+	Run = MOOSDB        		@  	NewConsole = false
+
+//	Run = GenericSensor       	@	NewConsole = true  ~ LASER_FRONT
+//	Run = GenericSensor       	@	NewConsole = false ~ LASER_REAR
+//	Run = GenericSensor		@	NewConsole = false ~ KINECT
+//	Run = MobileRobot_Pioneer 	@	NewConsole = false
+	Run = MobileRobot_Simul3D  @   NewConsole = true
+
+//	Run = iRobotGUI2010     	@   NewConsole = false
+
+	Run = LocalizationPF       @   NewConsole = true
+	Run = LocalizationFusion   @   NewConsole = true
+	
+	Run = NavigatorReactivePTG3D	@   NewConsole = true
+	
+		
+	// MOOS-Scope: Visualizer of MOOS-DB	
+	// Run = uMS       @       NewConsole=false
+}
+
+//ProcessConfig = MobileRobot_Pioneer
+//{
+//	CommsTick = 15
+//	AppTick = 15
+//
+//	driver			= CActivMediaRobotBase
+//
+//	robotPort_WIN 		= COM9
+//	robotPort_LIN 		= /dev/ttyUSB0
+//	robotBaud		= 115200
+//
+//	enableSonars        	= 0     ; 0:Disabled (default), 1: Enabled
+//}
+
+ProcessConfig = LocalizationFusion
+{
+	CommsTick = 10
+	AppTick = 10
+}
+
+
+ProcessConfig = LocalizationPF
+{
+	CommsTick = 5
+	AppTick = 5
+
+	// The map used as a reference for localization
+	// ---------------------------------------------------------
+	// If "simplemap_file" is present, the other map entries are ignored.
+	//simplemap_file = granada_22MAR2010.simplemap
+	//simplemap_file = 26_MAY_2009_sancho_lab_seminario_pasillo.simplemap
+
+
+	gridmap_image_file	= map2_1.png
+	gridmap_image_res	= 0.02		// Resolution: Size of each pixel (meters)
+	//gridmap_image_cx	= 100		// Pixel coordinates of the origin (0,0)
+	//gridmap_image_cy	= 100		//  If not present, use the image center.
+
+	// Initial uniform distribution:
+	X_MIN		= -2
+	X_MAX		= 2
+	Y_MIN		= -2
+	Y_MAX		= 2
+
+	// Number of initial particles
+	sampleSize = 5000
+
+	// The Particle Filter algorithm:
+	//	0: pfStandardProposal	  ***
+	//	1: pfAuxiliaryPFStandard
+	//	2: pfOptimalProposal    
+	//	3: pfAuxiliaryPFOptimal	  ***
+	//
+	PF_algorithm=0
+
+	// The Particle Filter Resampling method:
+	//	0: prMultinomial
+	//	1: prResidual
+	//	2: prStratified
+	//	3: prSystematic
+	resamplingMethod=0
+
+	// Set to 1 to enable KLD adaptive sample size:
+	adaptiveSampleSize=1
+
+	// Only for algorithm=3 (pfAuxiliaryPFOptimal)
+	pfAuxFilterOptimal_MaximumSearchSamples=250
+
+	// Resampling threshold
+	BETA=0.5
+
+	// KLD-sampling
+	KLD_binSize_PHI_deg=2.5
+	KLD_binSize_XY=0.07
+	KLD_delta=0.01
+	KLD_epsilon=0.01
+	KLD_maxSampleSize=10000
+	KLD_minSampleSize=2000
+
+	// ====================================================
+	//            MULTIMETRIC MAP CONFIGURATION
+	// ====================================================
+//	[MetricMap]
+	// Creation of maps:
+	occupancyGrid_count = 1 
+	gasGrid_count       = 0
+	landmarksMap_count  = 0
+	pointsMap_count     = 0
+	beaconMap_count     = 0
+
+	// Selection of map for likelihood: (fuseAll=-1,occGrid=0, points=1,landmarks=2,gasGrid=3)
+	likelihoodMapSelection=-1
+
+	// ====================================================
+	//   MULTIMETRIC MAP: OccGrid #00
+	// ====================================================
+	// Creation Options for OccupancyGridMap 00:
+	//	[MetricMap_occupancyGrid_00_creationOpts]
+	resolution=0.10
+
+	// Insertion Options for OccupancyGridMap 00:
+	//	[MetricMap_occupancyGrid_00_insertOpts]
+	mapAltitude=0
+	useMapAltitude=0
+	maxDistanceInsertion=15
+	maxOccupancyUpdateCertainty=0.55
+	considerInvalidRangesAsFreeSpace=0
+	minLaserScanNoiseStd=0.001
+
+	// Likelihood Options for OccupancyGridMap 00:
+	//	[MetricMap_occupancyGrid_00_likelihoodOpts]
+	likelihoodMethod=4		// 0=MI, 1=Beam Model, 2=RSLC, 3=Cells Difs, 4=LF_Trun, 5=LF_II
+
+	LF_decimation=20
+	LF_stdHit=0.20
+	LF_maxCorrsDistance=0.30
+	LF_zHit=0.95
+	LF_zRandom=0.05
+	LF_maxRange=80
+	LF_alternateAverageMethod=0
+}
+
+
+
+ProcessConfig = LASER_FRONT
+{
+	CommsTick = 100
+	AppTick = 200
+
+	driver			= CHokuyoURG
+	process_rate	= 90		; Hz
+	grab_decimation	= 3
+
+	sensorLabel  	= LASER1
+	pose_x			= 0.14	; Laser range scaner 3D position in the robot (meters)
+	pose_y			= 0
+	pose_z			= 0.29
+
+	pose_yaw		= 0	; Angles in degrees
+	pose_pitch		= 0
+	pose_roll		= 0
+
+	COM_port_WIN	= COM7
+	COM_port_LIN	= ttyACM_FRONT
+
+	// Optional: Exclusion zones to avoid the robot seeing itself:
+	//exclusionZone1_x = -0.0.20 0.30 0.30 0.20
+	//exclusionZone1_y = 0.20 0.30 0.30 0.20
+
+	// Optional: Exclusion zones to avoid the robot seeing itself:
+	//exclusionAngles1_ini = 110  // Deg
+	//exclusionAngles1_end =-110  // Deg
+
+}
+
+ProcessConfig = LASER_REAR
+{
+	CommsTick = 100
+	AppTick = 200
+
+	driver			= CHokuyoURG
+	process_rate	= 90		; Hz
+	grab_decimation	= 3
+
+	sensorLabel  	= LASER2
+	pose_x			= -0.23	; Laser range scaner 3D position in the robot (meters)
+	pose_y			= 0
+	pose_z			= 0.29
+	pose_yaw		= 180	; Angles in degrees
+	pose_pitch		= 0
+	pose_roll		= 0
+
+	COM_port_WIN	= COM8
+	COM_port_LIN	= ttyACM_REAR
+
+//	exclusionAngles1_ini = 90  // Deg
+//	exclusionAngles1_end =-90  // Deg
+}
+
+
+ProcessConfig = iRobotGUI2010
+{
+	CommsTick = 5
+	AppTick = 5
+
+	// The 3D model of the robot (empty: default model)
+	// robot_3DS_model_file = ./mapir_sancho_robot.3ds.gz
+
+}
+
+
+ProcessConfig = NavigatorReactivePTG3D
+{
+	CommsTick = 10
+	AppTick = 10
+	simulation = 1			//If it's real operation, set it to 0
+	
+	//[ROBOT_CONFIG]
+
+	HEIGHT_LEVELS = 3
+
+	//Indicate the geometry of each level
+
+	//Types:   2 - Polyhedric  (LEVELX_TYPE, LEVELX_HEIGHT, LEVELX_VECTORX, LEVELX_VECTORY)
+
+	LEVEL1_HEIGHT = 0.88
+	LEVEL1_VECTORX = 0.31 0.22 -0.22 -0.31 -0.22 0.22
+	LEVEL1_VECTORY = 0 0.24 0.24 0 -0.24 -0.24
+
+	LEVEL2_HEIGHT = 0.48
+	LEVEL2_VECTORX = 0.21 -0.23 -0.23 0.21
+	LEVEL2_VECTORY = 0.16 0.16 -0.16 -0.16
+
+	LEVEL3_HEIGHT = 0.5
+	LEVEL3_VECTORX = 0 -0.32 -0.32 0
+	LEVEL3_VECTORY = 0.16 0.16 -0.16 -0.16
+
+
+	//[LASER_CONFIG]
+
+	//Lasers declaration
+	//Indicate the number of lasers
+
+	N_LASERS = 2
+
+
+	//Indicate the geometric disposition of each laser. This information must be consistent with that included before
+	//Information required: 	LASERX_POSE, LASERY_POSE, LASERX_MAX_RANGE, LASERX_APERTURE
+	//							LASERX_STD_ERROR, LASERX_LEVEL, LASERX_SEGMENTS
+
+	LASER1_POSE = 0 0 0.3 0 0 0
+	LASER1_MAX_RANGE = 30
+	LASER1_APERTURE = 3.141592
+	LASER1_STD_ERROR = 0.02
+	LASER1_LEVEL = 1
+	LASER1_SEGMENTS = 181
+
+	LASER2_POSE = 0 0 0.3 3.14159 0 0
+	LASER2_MAX_RANGE = 30
+	LASER2_APERTURE = 3.141592
+	LASER2_STD_ERROR = 0.02
+	LASER2_LEVEL = 1
+	LASER2_SEGMENTS = 181
+
+	LASER3_POSE = 0 0 1.8 0 0 0
+	LASER3_MAX_RANGE = 50
+	LASER3_APERTURE = 3.141592
+	LASER3_STD_ERROR = 0.02
+	LASER3_LEVEL = 3
+	LASER3_SEGMENTS = 181
+
+
+	//[KINECT_CONFIG]
+
+	//Kinects declaration
+	//Indicate the number of kinects
+
+	N_KINECTS = 1
+
+	//Indicate the geometric disposition of each kinect. This information must be consistent with that included before
+	//Information required: KINECTX_LEVEL, KINECTX_X, KINECTX_Y, KINECTX_Z, KINECTX_PHI
+	//						KINECTX_MINRANGE, KINECTX_MAXRANGE (METERS), KINECTX_PITCH_ANGLE, KINECTX_ROLL_ANGLE (DEGREES)
+	//						KINECTX_ROWS, KINECTX_COLUMNS, KINECTX_STD_ERROR
+
+	KINECT1_LEVEL = 2
+	KINECT1_X = 0
+	KINECT1_Y = 0
+	KINECT1_Z = 1
+	KINECT1_PHI = 0
+	KINECT1_MINRANGE = 1
+	KINECT1_MAXRANGE = 7
+	KINECT1_FOV_V = 45
+	KINECT1_FOV_H = 58
+	KINECT1_PITCH_ANGLE = -20
+	KINECT1_ROWS = 21
+	KINECT1_COLUMNS = 21
+	KINECT1_STD_ERROR = 0.0
+
+
+	KINECT2_LEVEL = 2
+	KINECT2_X = 0
+	KINECT2_Y = 0
+	KINECT2_Z = 1.4
+	KINECT2_PHI = -0.4
+	KINECT2_MINRANGE = 0
+	KINECT2_MAXRANGE = 20
+	KINECT2_FOV_V = 45
+	KINECT2_FOV_H = 58
+	KINECT2_PITCH_ANGLE = -20
+	KINECT2_ROWS = 21
+	KINECT2_COLUMNS = 21
+	KINECT2_STD_ERROR = 0.0
+
+	//[MAP_CONFIG]
+
+	FAMILY = 2
+	NUM_MAPS = 3
+	MAP_RESOLUTION = 0.02
+
+	
+	//[NAVIGATION_CONFIG]
+
+	// Indicate whether you want to reload the gridcollision tables or not.
+
+	RELOAD_PTGFILES = 0		// 0 - Don't reload,   1 - Reload
+
+	// Indicate whether you want to save data into a Log file or not.
+
+	RECORD_LOGFILE = 1		// 0 - Don't record,   1 - Record
+
+
+	// 0: VFF,  1: ND
+	HOLONOMIC_METHOD = 1
+
+
+	//	Parameters for the navigation
+	// ----------------------------------------------------
+
+	weights = 0.5 0.05 0.5 2.0 0.5 0.1
+
+	// 1: Free space
+	// 2: Dist. in sectors			
+	// 3: Heading toward target
+	// 4: Closer to target (euclidean)
+	// 5: Hysteresis
+	// 6: Security Distance
+
+	DIST_TO_TARGET_FOR_SENDING_EVENT = 1.25	// Minimum. distance to target for sending the end event. Set to 0 to send it just on navigation end
+
+	X0 = -4						// Initial location
+	Y0 = -2
+	PHI0 = 90					// In degrees
+	X_TARGET = 8				// Target
+	Y_TARGET = -2
+	VMAX_MPS = 0.70				// Speed limits
+	WMAX_DEGPS = 50
+	ROBOTMODEL_DELAY = 0		// The delay until motor reaction
+	ROBOTMODEL_TAU = 0			// The "TAU" time constant of a first order lowpass filter
+	MAX_DISTANCE_PTG = 1.5		// Marca el diametro del TP-Space en el que tiene en cuenta los obstaculos.		
+	GRID_RESOLUTION = 0.02
+	
+
+	//	PTGs	.All of them has the same characteristics, but they don't use all of these characteristics. 
+	//--------------------------------------------------------------------------------------------------------
+	//	Types:	1 - Circular
+	//		2 - a - A
+	//		3 - C|C,s, R = vmax/wmax
+	//		4 - C|C,s, like PTG 3, but if t>valor -> v = w = 0
+	//		5 - 
+	//		6 - 
+	//		7 - 
+
+
+	PTG_COUNT = 1			//Numero de PTGs a utilizar
+
+	PTG1_TYPE = 1
+	PTG1_NALFAS = 121
+	PTG1_VMAX = 0.4
+	PTG1_WMAX = 30
+	PTG1_K = 1
+	PTG1_AV = 57.3
+	PTG1_AW = 57.3
+
+	PTG2_TYPE = 1
+	PTG2_NALFAS = 121
+	PTG2_VMAX = 0.3
+	PTG2_WMAX = 30
+	PTG2_K = -1
+	PTG2_AV = 57.3
+	PTG2_AW = 57.3
+
+	PTG3_TYPE = 2
+	PTG3_NALFAS = 121
+	PTG3_VMAX = 0.4
+	PTG3_WMAX = 30
+	PTG3_K = 1.0
+	PTG3_AV = 57.3
+	PTG3_AW = 57.3
+
+	PTG4_TYPE = 3
+	PTG4_NALFAS = 121
+	PTG4_VMAX = 0.4
+	PTG4_WMAX = 30
+	PTG4_K = 1.0
+	PTG4_AV = 57.3
+	PTG4_AW = 57.3
+
+	PTG5_TYPE = 4
+	PTG5_NALFAS = 121
+	PTG5_VMAX = 0.4
+	PTG5_WMAX = 30
+	PTG5_K = 1.0
+	PTG5_AV = 57.3;
+	PTG5_AW = 57.3;
+
+
+
+	//	Parameters for the "Nearness diagram" Holonomic method
+	// ------------------------------------------------------------
+
+	//[ND_CONFIG]
+	factorWeights = 1.0 0.5 2.0 0.4
+	// 1: Free space
+	// 2: Dist. in sectors
+	// 3: Closer to target (euclidean)
+	// 4: Hysteresis
+
+	WIDE_GAP_SIZE_PERCENT = 0.25			// The robot travels nearer to obstacles if this parameter is small. 
+											// The smaller it is, the closer the selected direction is respect to
+											// the Target direction in TP-Space (under some conditions)
+	MAX_SECTOR_DIST_FOR_D2_PERCENT = 0.25	// 0.25 default
+	RISK_EVALUATION_SECTORS_PERCENT = 0.25	// 0.25 default
+	RISK_EVALUATION_DISTANCE = 0.15			// 0.15 default. In normalized ps-meters [0,1]
+	TARGET_SLOW_APPROACHING_DISTANCE = 1.00	// For stop gradually
+	TOO_CLOSE_OBSTACLE = 0.03				// In normalized ps-meters
+
+
+
+	//	Parameters for the VFF Holonomic method
+	// ------------------------------------------------------------
+
+	//[VFF_CONFIG]
+
+	TARGET_SLOW_APPROACHING_DISTANCE = 1.00
+	TARGET_ATTRACTIVE_FORCE = 7.5
+
+}
+
+ProcessConfig = MobileRobot_Simul3D
+{
+	CommsTick = 10
+	AppTick = 10
+	
+	//[ROBOT_CONFIG]
+
+	HEIGHT_LEVELS = 3
+
+	//Indicate the geometry of each level
+
+	//Types:   2 - Polyhedric  (LEVELX_TYPE, LEVELX_HEIGHT, LEVELX_VECTORX, LEVELX_VECTORY)
+
+	LEVEL1_HEIGHT = 0.88
+	LEVEL1_VECTORX = 0.31 0.22 -0.22 -0.31 -0.22 0.22
+	LEVEL1_VECTORY = 0 0.24 0.24 0 -0.24 -0.24
+
+	LEVEL2_HEIGHT = 0.48
+	LEVEL2_VECTORX = 0.21 -0.23 -0.23 0.21
+	LEVEL2_VECTORY = 0.16 0.16 -0.16 -0.16
+
+	LEVEL3_HEIGHT = 0.5
+	LEVEL3_VECTORX = 0 -0.32 -0.32 0
+	LEVEL3_VECTORY = 0.16 0.16 -0.16 -0.16
+
+	//[LASER_CONFIG]
+
+
+	//Lasers declaration
+	//Indicate the number of lasers
+
+	N_LASERS = 2
+
+	//Indicate the geometric disposition of each laser. This information must be consistent with that included before
+	//Information required: 	LASERX_POSE, LASERY_POSE, LASERX_MAX_RANGE, LASERX_APERTURE
+	//							LASERX_STD_ERROR, LASERX_LEVEL, LASERX_SEGMENTS
+
+	LASER1_POSE = 0 0 0.3 0 0 0
+	LASER1_MAX_RANGE = 30
+	LASER1_APERTURE = 3.141592
+	LASER1_STD_ERROR = 0.02
+	LASER1_LEVEL = 1
+	LASER1_SEGMENTS = 181
+
+	LASER2_POSE = 0 0 0.3 3.141592 0 0
+	LASER2_MAX_RANGE = 30
+	LASER2_APERTURE = 3.141592
+	LASER2_STD_ERROR = 0.02
+	LASER2_LEVEL = 1
+	LASER2_SEGMENTS = 181
+
+	LASER3_POSE = 0 0 1.8 0 0 0
+	LASER3_MAX_RANGE = 50
+	LASER3_APERTURE = 3.141592
+	LASER3_STD_ERROR = 0.02
+	LASER3_LEVEL = 3
+	LASER3_SEGMENTS = 181
+
+
+	//[KINECT_CONFIG]
+
+	//Kinects declaration
+	//Indicate the number of kinects
+
+	N_KINECTS = 1
+
+	//Indicate the geometric disposition of each kinect. This information must be consistent with that included before
+	//Information required: KINECTX_LEVEL, KINECTX_X, KINECTX_Y, KINECTX_Z, KINECTX_PHI
+	//						KINECTX_MINRANGE, KINECTX_MAXRANGE (METERS), KINECTX_PITCH_ANGLE, KINECTX_ROLL_ANGLE (DEGREES)
+	//						KINECTX_ROWS, KINECTX_COLUMNS, KINECTX_STD_ERROR
+
+	KINECT1_LEVEL = 2
+	KINECT1_X = 0
+	KINECT1_Y = 0
+	KINECT1_Z = 1
+	KINECT1_PHI = 0
+	KINECT1_MINRANGE = 1
+	KINECT1_MAXRANGE = 7
+	KINECT1_FOV_V = 45
+	KINECT1_FOV_H = 58
+	KINECT1_PITCH_ANGLE = -20
+	KINECT1_ROWS = 21
+	KINECT1_COLUMNS = 21
+	KINECT1_STD_ERROR = 0.0
+
+
+	KINECT2_LEVEL = 2
+	KINECT2_X = 0
+	KINECT2_Y = 0
+	KINECT2_Z = 1.4
+	KINECT2_PHI = -0.4
+	KINECT2_MINRANGE = 0
+	KINECT2_MAXRANGE = 20
+	KINECT2_FOV_V = 45
+	KINECT2_FOV_H = 58
+	KINECT2_PITCH_ANGLE = -20
+	KINECT2_ROWS = 21
+	KINECT2_COLUMNS = 21
+	KINECT2_STD_ERROR = 0.0
+
+	//[MAP_CONFIG]
+
+	FAMILY = 2
+	NUM_MAPS = 3
+	MAP_RESOLUTION = 0.02
+
+	
+	//[NAVIGATION_CONFIG]
+
+	// Indicate whether you want to reload the gridcollision tables or not.
+
+	RELOAD_PTGFILES = 1		// 0 - Don't reload,   1 - Reload
+
+	// Indicate whether you want to save data into a Log file or not.
+
+	RECORD_LOGFILE = 1		// 0 - Don't record,   1 - Record
+
+
+	// 0: VFF,  1: ND
+	HOLONOMIC_METHOD = 0
+
+
+	//	Parameters for the navigation
+	// ----------------------------------------------------
+
+	weights = 0.5 0.05 0.5 2.0 0.5 0.1
+
+	// 1: Free space
+	// 2: Dist. in sectors			
+	// 3: Heading toward target
+	// 4: Closer to target (euclidean)
+	// 5: Hysteresis
+	// 6: Security Distance
+
+	DIST_TO_TARGET_FOR_SENDING_EVENT = 1.25	// Minimum. distance to target for sending the end event. Set to 0 to send it just on navigation end
+
+	X0 = -4						// Initial location
+	Y0 = -2
+	PHI0 = 90					// In degrees
+	X_TARGET = 8				// Target
+	Y_TARGET = -2
+	VMAX_MPS = 0.70				// Speed limits
+	WMAX_DEGPS = 50
+	ROBOTMODEL_DELAY = 0		// The delay until motor reaction
+	ROBOTMODEL_TAU = 0			// The "TAU" time constant of a first order lowpass filter
+	MAX_DISTANCE_PTG = 1.5		// Marca el diametro del TP-Space en el que tiene en cuenta los obstaculos.		
+	GRID_RESOLUTION = 0.02
+	
+
+	//	PTGs	.All of them has the same characteristics, but they don't use all of these characteristics. 
+	//--------------------------------------------------------------------------------------------------------
+	//	Types:	1 - Circular
+	//		2 - a - A
+	//		3 - C|C,s, R = vmax/wmax
+	//		4 - C|C,s, like PTG 3, but if t>valor -> v = w = 0
+	//		5 - 
+	//		6 - 
+	//		7 - 
+
+
+	PTG_COUNT = 1			//Numero de PTGs a utilizar
+
+	PTG1_TYPE = 1
+	PTG1_NALFAS = 121
+	PTG1_VMAX = 0.4
+	PTG1_WMAX = 30
+	PTG1_K = 1
+	PTG1_AV = 57.3
+	PTG1_AW = 57.3
+
+	PTG2_TYPE = 1
+	PTG2_NALFAS = 121
+	PTG2_VMAX = 0.3
+	PTG2_WMAX = 30
+	PTG2_K = -1
+	PTG2_AV = 57.3
+	PTG2_AW = 57.3
+
+	PTG3_TYPE = 2
+	PTG3_NALFAS = 121
+	PTG3_VMAX = 0.4
+	PTG3_WMAX = 30
+	PTG3_K = 1.0
+	PTG3_AV = 57.3
+	PTG3_AW = 57.3
+
+	PTG4_TYPE = 3
+	PTG4_NALFAS = 121
+	PTG4_VMAX = 0.4
+	PTG4_WMAX = 30
+	PTG4_K = 1.0
+	PTG4_AV = 57.3
+	PTG4_AW = 57.3
+
+	PTG5_TYPE = 4
+	PTG5_NALFAS = 121
+	PTG5_VMAX = 0.4
+	PTG5_WMAX = 30
+	PTG5_K = 1.0
+	PTG5_AV = 57.3;
+	PTG5_AW = 57.3;
+
+
+
+	//	Parameters for the "Nearness diagram" Holonomic method
+	// ------------------------------------------------------------
+
+	//[ND_CONFIG]
+	factorWeights = 1.0 0.5 2.0 0.4
+	// 1: Free space
+	// 2: Dist. in sectors
+	// 3: Closer to target (euclidean)
+	// 4: Hysteresis
+
+	WIDE_GAP_SIZE_PERCENT = 0.25			// The robot travels nearer to obstacles if this parameter is small. 
+											// The smaller it is, the closer the selected direction is respect to
+											// the Target direction in TP-Space (under some conditions)
+	MAX_SECTOR_DIST_FOR_D2_PERCENT = 0.25	// 0.25 default
+	RISK_EVALUATION_SECTORS_PERCENT = 0.25	// 0.25 default
+	RISK_EVALUATION_DISTANCE = 0.15			// 0.15 default. In normalized ps-meters [0,1]
+	TARGET_SLOW_APPROACHING_DISTANCE = 1.00	// For stop gradually
+	TOO_CLOSE_OBSTACLE = 0.03				// In normalized ps-meters
+
+
+
+	//	Parameters for the VFF Holonomic method
+	// ------------------------------------------------------------
+
+	//[VFF_CONFIG]
+
+	TARGET_SLOW_APPROACHING_DISTANCE = 1.00
+	TARGET_ATTRACTIVE_FORCE = 7.5
+
+}
+
+
+

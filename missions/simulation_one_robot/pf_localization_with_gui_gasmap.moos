@@ -1,0 +1,335 @@
+
+/////////////////////////////////////////////////////////////////////////////
+// Antler configuration  block
+//
+// This file is part of the OpenMORA (Open MObile Robotics Arquitecture)
+//   http://babel.isa.uma.es/mora/
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+ProcessConfig = ANTLER
+{
+	MSBetweenLaunches 	= 200
+	ExecutablePath		= 
+	
+	//crucial processes
+
+	Run = MOOSDB        			@  NewConsole = false
+
+	Run = LocalizationPF    	 	@  NewConsole = false
+	Run = LocalizationFusion     	@  NewConsole = false
+	Run = NavigatorReactivePTG  	@  NewConsole = false
+
+	Run = MobileRobot_Simul    	@  NewConsole = false
+	Run = Enose_Simul     			@  NewConsole = true
+	
+	Run = JoystickControl     		@  NewConsole = false
+	Run = iRobotGUI2010     		@  NewConsole = false
+	
+	Run = Rawlog-grabber			@  NewConsole = false
+}
+
+ProcessConfig = LocalizationFusion
+{
+	CommsTick = 30
+	AppTick = 30
+}
+
+ProcessConfig = LocalizationPF
+{
+	CommsTick = 10
+	AppTick = 5
+
+
+	// The map used as a reference for localization
+	// ---------------------------------------------------------
+	// If "simplemap_file" is present, the other map entries are ignored.
+	//simplemap_file 	= one_map.simplemap
+
+	gridmap_image_file	= example_map2.png
+	gridmap_image_res	= 0.01		// Resolution: Size of each pixel (meters)
+	//gridmap_image_cx	= 100		// Pixel coordinates of the origin (0,0)
+	//gridmap_image_cy	= 100		//  If not present, use the image center.
+
+
+	// Initial uniform distribution:
+	X_MIN		= -2
+	X_MAX		= 2
+	Y_MIN		= -2
+	Y_MAX		= 2
+
+	// Number of initial particles
+	sampleSize=200000
+
+	// The Particle Filter algorithm:
+	//	0: pfStandardProposal	  ***
+	//	1: pfAuxiliaryPFStandard
+	//	2: pfOptimalProposal    
+	//	3: pfAuxiliaryPFOptimal	  ***
+	//
+	PF_algorithm=0
+
+	// The Particle Filter Resampling method:
+	//	0: prMultinomial
+	//	1: prResidual
+	//	2: prStratified
+	//	3: prSystematic
+	resamplingMethod=0
+
+	// Set to 1 to enable KLD adaptive sample size:
+	adaptiveSampleSize=1
+
+	// Only for algorithm=3 (pfAuxiliaryPFOptimal)
+	pfAuxFilterOptimal_MaximumSearchSamples=250
+
+	// Resampling threshold
+	BETA=0.5
+
+
+	// KLD-sampling
+	KLD_binSize_PHI_deg=2.5
+	KLD_binSize_XY=0.07
+	KLD_delta=0.01
+	KLD_epsilon=0.01
+	KLD_maxSampleSize=40000
+	KLD_minSampleSize=150
+
+}
+
+
+ProcessConfig = MobileRobot_Simul
+{
+	CommsTick = 15
+	AppTick = 15
+
+	// Sensors to emulate on the robot
+	// ---------------------------------------------------------
+	enable_sonar		= true
+	enable_laser		= true
+	enable_infrared		= true
+
+	show_3d 		= true		// Whether to show the 3D window or not
+	
+	laser_fov_deg	= 320		// FOV of the laser, in degrees
+
+	// The map used to simulate laser scanners and/or sonars:
+	// ---------------------------------------------------------
+	// If "simplemap_file" is present, the other map entries are ignored.
+	//simplemap_file 	= one_map.simplemap
+
+	gridmap_image_file	= example_map2.png
+	gridmap_image_res	= 0.01		// Resolution: Size of each pixel (meters)
+
+	//gridmap_image_cx	= 100		// Pixel coordinates of the origin (0,0)
+	//gridmap_image_cy	= 100		//  If not present, use the image center.
+}
+
+ProcessConfig = JoystickControl
+{
+	CommsTick = 15
+	AppTick = 10
+
+	max_v	= 0.5	// Maximum linear speed (m/s)
+	max_w	= 45	// Maximum angular speed (deg/s)
+
+}
+
+ProcessConfig = iRobotGUI2010
+{
+	CommsTick = 15
+	AppTick = 15
+
+	// The 3D model of the robot (empty: default model)
+	//robot_3DS_model_file = ./mapir_sancho_robot.3ds.gz
+}
+
+ProcessConfig = Rawlog-grabber
+{
+	AppTick = 15			//Hz
+	CommsTick = 15			//Hz
+}
+
+ProcessConfig = Enose_Simul
+{
+	CommsTick = 10
+	AppTick = 10
+
+	// AppTick: determinate the rate at which the dynamic 
+	//  gas map (if it's dynamic) will be simulated.
+
+	rate_sensor      = 5.0    // In Hz: rate of sensor measurements
+	rate_refresh_gui = 2.0    // In Hz: rate of resent gas map to GUI
+
+	// Sensor label field in CObservation, and also name 
+	//  of the MOOS variable to publish:
+	sensor_label     = ENOSE_SIMUL
+
+	// All sensor output data are normalized 
+	// concentrations scaled by this value:
+	voltage_max      = 5.0
+
+	// Configuration of eNoses sensors
+	// Note: all enoses are enabled to detect all types 
+	// of gases (i.e. all the individual maps simultaneously)
+	// -------------------------------------------------------
+	num_enoses = 2
+
+	// e-Nose #0 -------------
+	enose0_pose_on_robot_x = 0.4   // (x,y) position on robot 
+	enose0_pose_on_robot_y = 0.0   //      (Mandatory)
+	// Optional values:
+	enose0_noise_offset = 0.0    // Offset to add to all readings (typ=0)
+	enose0_noise_std    = 0.001    // Additive gaussian noise (standard deviation)  (readings saturate to [0,1])
+	enose0_tau_rise     = 2.1    // 1st order model constant (seconds)
+	enose0_tau_decay    = 12.2   // 1st order model constant (seconds)
+
+	// e-Nose #1 -------------
+	enose1_pose_on_robot_x = 0.4   // (x,y) position on robot 
+	enose1_pose_on_robot_y = 0.0   //      (Mandatory)
+	// Optional values:
+	enose1_noise_offset = 0.0     // Offset to add to all readings (typ=0)
+	enose1_noise_std    = 0.0     // Additive gaussian noise (standard deviation)  (readings saturate to [0,1])
+	enose1_tau_rise     = 0.001   // 1st order model constant (seconds)
+	enose1_tau_decay    = 0.001   // 1st order model constant (seconds)
+
+
+	// Configuration of ground truth maps:
+	// -----------------------------------------
+	// Simulator type. Existing classes are:
+	//  - GasMapModel_Static 
+	//  - ...
+	simulator = GasMapModel_Static 
+
+	// Number of maps:
+	num_gas_maps = 1
+
+	// Map #0:
+	map0_gastype = 0x2602
+	// Possible values: "bitmap", "uniform"
+	map0_init_from = bitmap
+	map0_resolution = 0.01   // meters
+	map0_x0 = -4.0   // meters
+	map0_y0 = -3.0   // meters
+	// A grayscale ground truth gas map
+	map0_bitmap = gasmap2.png
+	
+		
+	// Map #1:
+	//map1_gastype = 0x2600
+	// Possible values: "bitmap", "uniform"
+	//map1_init_from = uniform
+	//map1_resolution = 0.05   // meters
+	//map1_x0 = -15   // meters
+	//map1_y0 = -10   // meters
+	//map1_x1 =  15   // meters
+	//map1_y1 =  10   // meters
+	//map1_value =  0.05  // [0,1] normalized concentration
+	
+}
+
+ProcessConfig = NavigatorReactivePTG
+{
+	CommsTick = 10
+	AppTick = 10
+
+	// [xs...; ys...; zs...]
+	virtual_obstacles = [0 0.3 -0.3; -2.5 -2.5 -2.5; 0.2 0.2 0.2]
+
+	//[ROBOT_NAME]
+
+	Name=THE_ROBOT
+
+	//[GLOBAL_CONFIG]
+	// 0: VFF,  1: ND
+	HOLONOMIC_METHOD=1
+	debugWindows=1
+	ALARM_SEEMS_NOT_APPROACHING_TARGET_TIMEOUT=100
+
+	// ----------------------------------------------------
+	//	Parameters for the &quot;Nearness diagram&quot; Holonomic method
+	// ----------------------------------------------------
+	//[ND_CONFIG]
+	factorWeights=[1.0,0.5,2.0,0.4]
+	// 1: Free space
+	// 2: Dist. in sectors
+	// 3: Closer to target (euclidean)
+	// 4: Hysteresis
+
+	WIDE_GAP_SIZE_PERCENT=0.50
+	MAX_SECTOR_DIST_FOR_D2_PERCENT=0.25
+	RISK_EVALUATION_SECTORS_PERCENT=0.25
+	RISK_EVALUATION_DISTANCE=0.15		
+	TARGET_SLOW_APPROACHING_DISTANCE=1.00
+	TOO_CLOSE_OBSTACLE=0.02	
+
+	// ----------------------------------------------------
+	//	Parameters for the navigation on the ROBOT
+	// ----------------------------------------------------
+	//[THE_ROBOT]
+	weights=[0.5, 0.05, 0.5, 2.0, 0.5, 0.1]
+	// 1: Free space
+	// 2: Dist. in sectors			
+	// 3: Heading toward target
+	// 4: Closer to target (euclidean)
+	// 5: Hysteresis
+	// 6: Security Distance
+
+	DIST_TO_TARGET_FOR_SENDING_EVENT=1.25	
+	// Minimum. distance to target for sending the end event. Set to 0 to send it just on navigation end
+
+	MinObstaclesHeight=0.0 		
+	// Minimum coordinate in the &quot;z&quot; axis for an obstacle to be taken into account.
+
+	MaxObstaclesHeight=1.40 		
+	//Maximum coordinate in the &quot;z&quot; axis for an obstacle to be taken into account.
+
+	robotMax_V_mps=0.90			
+	//Speed limits
+
+	robotMax_W_degps=90
+
+	ROBOTMODEL_DELAY=0			
+	// The delay until motor reaction
+
+	ROBOTMODEL_TAU=0			
+	// The TAU time constant of a first order lowpass filter
+
+	MAX_REFERENCE_DISTANCE=4.50
+	WIDE_GAP_SIZE_PERCENT=0.40
+	RISK_EVALUATION_DISTANCE=0.5
+	RISK_EVALUATION_SECTORS_PERCENT=0.20
+	MAX_SECTOR_DIST_FOR_D2_PERCENT=0.25
+	RESOLUCION_REJILLA_X=0.03
+	RESOLUCION_REJILLA_Y=0.03
+
+	PTG_COUNT=3
+
+	// 		C-PTGs:
+	// ------------------------------------
+	PTG0_Type=1
+	PTG0_nAlfas=300
+	PTG0_v_max_mps=0.9
+	PTG0_w_max_gps=90
+	PTG0_K=1.0
+
+	PTG1_Type=1
+	PTG1_nAlfas=300
+	PTG1_v_max_mps=0.9
+	PTG1_w_max_gps=90
+	PTG1_K=-1.0
+
+	//	     a-A type PTGs:
+	// ------------------------------------
+	PTG2_Type=2
+	PTG2_nAlfas=300
+	PTG2_v_max_mps=0.9
+	PTG2_w_max_gps=90
+	PTG2_cte_a0v_deg=60
+	PTG2_cte_a0w_deg=60
+
+	RobotModel_shape2D_xs=[-0.3, 0.22, 0.22, -0.3]
+	RobotModel_shape2D_ys=[0.24, 0.24, -0.24, -0.24]
+
+}
+

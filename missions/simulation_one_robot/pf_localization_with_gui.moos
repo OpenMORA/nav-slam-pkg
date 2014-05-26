@@ -1,0 +1,151 @@
+
+/////////////////////////////////////////////////////////////////////////////
+// Antler configuration  block
+//
+// This file is part of the OpenMORA (Open MObile Robotics Arquitecture)
+//   http://babel.isa.uma.es/mora/
+/////////////////////////////////////////////////////////////////////////////
+
+
+
+ProcessConfig = ANTLER
+{
+	MSBetweenLaunches 	= 200
+	ExecutablePath		= 
+	
+	//crucial processes
+
+	Run = MOOSDB        @  NewConsole = false
+
+	Run = LocalizationPF     @   NewConsole =false
+	Run = LocalizationFusion     @   NewConsole =false
+
+	Run = MobileRobot_Simul    @   NewConsole =false
+	Run = JoystickControl     @   NewConsole =false
+	Run = iRobotGUI2010     @   NewConsole =false
+
+	// MOOS-Scope: Visualizer of MOOS-DB	
+	//Run = uMS       @       NewConsole=false
+}
+
+ProcessConfig = StateCharts
+{
+	CommsTick = 15
+	AppTick = 15
+	
+	objective_file = D:\Code\MORA\localbuild\bin\Release\Objetivo.scxml
+
+}
+
+ProcessConfig = LocalizationFusion
+{
+	CommsTick = 30
+	AppTick = 30
+}
+
+ProcessConfig = LocalizationPF
+{
+	CommsTick = 10
+	AppTick = 5
+
+
+	// The map used as a reference for localization
+	// ---------------------------------------------------------
+	// If "simplemap_file" is present, the other map entries are ignored.
+	//simplemap_file 	= one_map.simplemap
+
+	gridmap_image_file	= example_map1.png
+	gridmap_image_res	= 0.05		// Resolution: Size of each pixel (meters)
+	//gridmap_image_cx	= 100		// Pixel coordinates of the origin (0,0)
+	//gridmap_image_cy	= 100		//  If not present, use the image center.
+
+
+	// Initial uniform distribution:
+	X_MIN		= -2
+	X_MAX		= 2
+	Y_MIN		= -2
+	Y_MAX		= 2
+
+	// Number of initial particles
+	sampleSize=200000
+
+	// The Particle Filter algorithm:
+	//	0: pfStandardProposal	  ***
+	//	1: pfAuxiliaryPFStandard
+	//	2: pfOptimalProposal    
+	//	3: pfAuxiliaryPFOptimal	  ***
+	//
+	PF_algorithm=0
+
+	// The Particle Filter Resampling method:
+	//	0: prMultinomial
+	//	1: prResidual
+	//	2: prStratified
+	//	3: prSystematic
+	resamplingMethod=0
+
+	// Set to 1 to enable KLD adaptive sample size:
+	adaptiveSampleSize=1
+
+	// Only for algorithm=3 (pfAuxiliaryPFOptimal)
+	pfAuxFilterOptimal_MaximumSearchSamples=250
+
+	// Resampling threshold
+	BETA=0.5
+
+
+	// KLD-sampling
+	KLD_binSize_PHI_deg=2.5
+	KLD_binSize_XY=0.07
+	KLD_delta=0.01
+	KLD_epsilon=0.01
+	KLD_maxSampleSize=40000
+	KLD_minSampleSize=150
+
+}
+
+
+ProcessConfig = MobileRobot_Simul
+{
+	CommsTick = 15
+	AppTick = 15
+
+	// Sensors to emulate on the robot
+	// ---------------------------------------------------------
+	enable_sonar		= true
+	enable_laser		= true
+
+	show_3d 		= false		// Whether to show the 3D window or not
+
+
+	// The map used to simulate laser scanners and/or sonars:
+	// ---------------------------------------------------------
+	// If "simplemap_file" is present, the other map entries are ignored.
+	//simplemap_file 	= one_map.simplemap
+
+	gridmap_image_file	= example_map1.png
+	gridmap_image_res	= 0.05		// Resolution: Size of each pixel (meters)
+
+	//gridmap_image_cx	= 100		// Pixel coordinates of the origin (0,0)
+	//gridmap_image_cy	= 100		//  If not present, use the image center.
+
+}
+
+ProcessConfig = JoystickControl
+{
+	CommsTick = 15
+	AppTick = 10
+
+	max_v	= 0.5	// Maximum linear speed (m/s)
+	max_w	= 90	// Maximum angular speed (deg/s)
+
+}
+
+ProcessConfig = iRobotGUI2010
+{
+	CommsTick = 15
+	AppTick = 15
+
+}
+
+

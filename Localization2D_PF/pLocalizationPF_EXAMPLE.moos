@@ -1,0 +1,27 @@
+
+//------------------------------------------
+// LocalizationPF configuration block
+
+ProcessConfig = LocalizationPF
+{
+	CommsTick = 10
+	AppTick = 5
+
+	// The map from which to generate the grid map.
+	MapRawFile 	= demo_mapping_simulator.mapraw
+
+	// The resolution of the grid map to build.
+	grid_resolution = 0.08
+
+	// Initial uniform distribution:
+	X_MIN		= -10
+	X_MAX		= 10
+	Y_MIN		= -10
+	Y_MAX		= 10
+
+	// Number of particles
+	INITIAL_SAMPLE_SIZE = 200000
+
+
+}
+
