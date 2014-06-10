@@ -449,7 +449,8 @@ bool CPFLocalizationApp::ProcessParticleFilter()
 		{
 			pVarLaser1->SetFresh(false);
 			CSerializablePtr obj;
-			StringToObject(pVarLaser1->GetStringVal(),obj);
+			//StringToObject(pVarLaser1->GetStringVal(),obj);	(deprecated) CGenericSensor now employs ObjectToOctetVector() to serialize objects to strings
+			mrpt::utils::RawStringToObject(pVarLaser1->GetStringRef(), obj);
 
 			if (obj && IS_CLASS(obj,CObservation2DRangeScan))
 			{
@@ -462,8 +463,8 @@ bool CPFLocalizationApp::ProcessParticleFilter()
 		if(pVarLaser2 && pVarLaser2->IsFresh())
 		{
 			pVarLaser2->SetFresh(false);
-			CSerializablePtr obj;
-			StringToObject(pVarLaser2->GetStringVal(),obj);
+			CSerializablePtr obj;			
+			mrpt::utils::RawStringToObject(pVarLaser2->GetStringRef(), obj);
 
 			if (obj && IS_CLASS(obj,CObservation2DRangeScan))
 			{
