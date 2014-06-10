@@ -615,7 +615,8 @@ void CReacNavPTGApp3D::sensorDataToReactive(CReactiveNavigator &nav)
 	if(pVarLaser1 && pVarLaser1->IsFresh())
 	{
 		pVarLaser1->SetFresh(false);
-		StringToObject(pVarLaser1->GetStringVal(),obj);
+		//StringToObject(pVarLaser1->GetStringVal(),obj); (deprecated)
+		mrpt::utils::RawStringToObject(pVarLaser1->GetStringRef(),obj);
 		if (obj && IS_CLASS(obj,CObservation2DRangeScan))
 			nav.m_robot.m_lasers[0].m_scan = *CObservation2DRangeScanPtr(obj);
 	}
@@ -624,7 +625,8 @@ void CReacNavPTGApp3D::sensorDataToReactive(CReactiveNavigator &nav)
 	if(pVarLaser2 && pVarLaser2->IsFresh())
 	{
 		pVarLaser2->SetFresh(false);
-		StringToObject(pVarLaser2->GetStringVal(),obj);
+		//StringToObject(pVarLaser2->GetStringVal(),obj);	(deprecated)
+		mrpt::utils::RawStringToObject(pVarLaser2->GetStringRef(),obj);
 		if (obj && IS_CLASS(obj,CObservation2DRangeScan))
 			nav.m_robot.m_lasers[1].m_scan = *CObservation2DRangeScanPtr(obj);
 	}
