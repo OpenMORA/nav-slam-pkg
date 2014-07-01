@@ -206,7 +206,8 @@ bool CLocalizationFusionApp::OnNewMail(MOOSMSG_LIST &NewMail)
 				m_robot_pose.processUpdateNewOdometry(cur_odo, time_now );
 				*/
 				CSerializablePtr obj;
-				StringToObject(i->GetString(),obj);
+				//StringToObject(i->GetString(),obj);
+				mrpt::utils::RawStringToObject(i->GetString(),obj);
 
 				if (obj && IS_CLASS(obj,CObservationOdometry))
 				{
