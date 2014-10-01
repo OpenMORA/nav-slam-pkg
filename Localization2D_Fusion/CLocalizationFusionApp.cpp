@@ -130,6 +130,24 @@ bool CLocalizationFusionApp::PublishCurrentBestLocalization()
 		m_Comms.Notify("LOCALIZATION_COV", sPoseCov );
 	}
 
+	// Get odometry as Obs (Serializable Object):
+		mrpt::slam::CObservationOdometryPtr locObs = mrpt::slam::CObservationOdometry::Create();
+		locObs->sensorLabel = "LOCALIZATION";
+		locObs->odometry = poseMean;
+		locObs->timestamp = now();
+		locObs->hasVelocities = false;
+		locObs->velocityLin = 0.0;
+		locObs->velocityAng = 0.0;
+		locObs->hasEncodersInfo = false;
+		locObs->encoderLeftTicks = 0;
+		locObs->encoderRightTicks = 0;		
+
+		mrpt::vector_byte vec_loc;
+		mrpt::utils::ObjectToOctetVector(locObs.pointer(), vec_loc);
+		//! @moos_publish	LOCALIZATION_OBS  The robot estimated pose uncertainty as mrpt::slam::CObservationOdometry
+		m_Comms.Notify("LOCALIZATION_OBS", vec_loc);
+
+
 	cout << endl << "The pose is estimated and the iteration takes " << GetTimeSinceIterate() << " seconds";
 
     return true;
