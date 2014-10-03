@@ -257,7 +257,7 @@ bool CReacNavPTGApp3D::OnNewMail(MOOSMSG_LIST &NewMail)
 		if( (i->GetName()=="PNAVIGATORREACTIVEPTG3D_CMD") && (MOOSStrCmp(i->GetString(),"CANCEL")))
 		{
 			// Pause navigation manually:
-			m_navigator.m_navstate = PAUSED;
+			m_navigator.m_navstate = CANCELLED; //previously as PAUSED;
 			m_navigator.m_dynfeatures.new_cmd_v = 0;
 			m_navigator.m_dynfeatures.new_cmd_w = 0;
 			changeSpeeds(m_navigator.m_dynfeatures.new_cmd_v,m_navigator.m_dynfeatures.new_cmd_w);
