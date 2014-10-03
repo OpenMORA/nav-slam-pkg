@@ -63,6 +63,7 @@ bool CJoystickApp::OnStartUp()
 
 	// Actual speed (m/s)
 	v_now = 0.0;
+	Jenable = false;		//Start as inactive (for security)
 
 	return DoRegistrations();
 }
@@ -122,11 +123,10 @@ bool getKeyboardPosition(int &kx, int &ky)
 bool CJoystickApp::Iterate()
 {
 	// Is MANUAL_MODE enabled??
-	CMOOSVariable *varJoy = GetMOOSVar("JOYSTICK_MODE");
-	if (!varJoy || varJoy->GetStringVal()!="1")
-	//if (!varJoy || varJoy->GetDoubleVal()!=1.00) // use when activating joystick mode manually through the moosdb web interface
+	if( !Jenable )
 		return true;
 
+	//printf("[Joystick] Into Iterate\n");
 	double cmd_v=0, cmd_w=0;
 	// Params to read the joystick:
 	float 			jx,jy,jz;
@@ -143,11 +143,13 @@ bool CJoystickApp::Iterate()
 	//Try reading the keyboard, else the joystick
 	if (getKeyboardPosition(kx,ky))
 	{
+		//printf("[Joystick] Got Keyboard\n");
 		cmd_v = ky*m_maxV;
 		cmd_w = kx*m_maxW;
 	}
 	else if (m_joy.getJoystickPosition(0,jx,jy,jz,btns))
 	{
+		//printf("[Joystick] Got Joystick\n");
 		cmd_v = -jy*m_maxV;
 		cmd_w = -jx*m_maxW;
 		// button reading
@@ -156,9 +158,10 @@ bool CJoystickApp::Iterate()
 				b = b|mask;
 			}
 			mask = mask<<1;
-		}
-				
+		}				
 	}
+	else
+		printf("[Joystick] No Keyboard/Joystick command present. Waiting...\n");
 
 	//Create aceleration profile
 	if (abs(v_now-cmd_v)<0.001 )
@@ -177,6 +180,7 @@ bool CJoystickApp::Iterate()
 	m_Comms.Notify("MOTION_CMD_W", cmd_w );
 	m_Comms.Notify("BUTTONS_CMD",b);
 
+	printf("[Joystick]: Comamnd send to Base is: %.03f m/s, %03f deg/s\n", v_now, cmd_w);
     return true;
 }
 
@@ -201,18 +205,37 @@ bool CJoystickApp::DoRegistrations()
 
 bool CJoystickApp::OnNewMail(MOOSMSG_LIST &NewMail)
 {
-   std::string cad;
+	std::string cad;
 	for(MOOSMSG_LIST::iterator i=NewMail.begin();i!=NewMail.end();++i)
-	{				
+	{	
+		//JOYSTICK_MODE
+		if( i->GetName()=="JOYSTICK_MODE" )
+		{
+			if( i->GetString() == "0" )
+			{
+				Jenable = false;
+				printf("[Joystick]: Module Disabled.\n");
+				//Stop the robot and set to mode manual
+				//! @moos_publish CANCEL_NAVIGATION
+				m_Comms.Notify("CANCEL_NAVIGATION", 1.0);
+			}
+			else if( i->GetString() == "1" )
+			{
+				Jenable = true;
+				printf("[Joystick]: Module Enabled.\n");
+			}
+			else
+				printf("[Joystick]: ERROR: incorrect command.\n");
+		}
+
+		//SHUTDOWN
 		if( (i->GetName()=="SHUTDOWN") && (MOOSStrCmp(i->GetString(),"true")) )
 		{
 			// Disconnect comms:			
 			MOOSTrace("Closing Module \n");
 			this->RequestQuit();
 		}
-
 	}
-
 
     UpdateMOOSVariables(NewMail);
     return true;

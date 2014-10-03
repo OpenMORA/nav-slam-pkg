@@ -57,6 +57,7 @@ protected:
 	double 	m_maxV;
 	double 	m_maxW;
 	double	v_now;
+	bool Jenable;
 
 };
 
