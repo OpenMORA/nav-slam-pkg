@@ -78,10 +78,10 @@ bool CReacNavPTGApp3D::OnStartUp()
 
 bool CReacNavPTGApp3D::OnCommandMsg( CMOOSMsg Msg )
 {
-    if(Msg.IsSkewed(MOOSTime()))
+    if( Msg.IsSkewed(MOOSTime()) )
         return true;
 
-    if(!Msg.IsString())
+    if( !Msg.IsString() )
         return MOOSFail("pNavigatorReactivePTG3D only accepts string command messages\n");
 
     std::string sCmd = Msg.GetString();
@@ -121,6 +121,7 @@ bool CReacNavPTGApp3D::DoNavigatorReset()
 		m_navigator.loadRobotConfiguration(m_ini);
 		m_navigator.m_logFile = NULL;
 		m_navigator.EnableLogFile(m_navigator.m_logFile);
+
 		m_visualization = m_ini.read_bool("","Opengl_scene", 0, false);
 		m_memory_on = m_ini.read_bool("","Memory_on", 1, false);
 		vred_a = m_ini.read_float("","Vred_a", 1, false);
@@ -205,27 +206,20 @@ bool CReacNavPTGApp3D::OnConnectToServer()
 
 
 bool CReacNavPTGApp3D::DoRegistrations()
-{
-	//! @moos_subscribe	ODOMETRY
-    AddMOOSVariable("ODOMETRY", "ODOMETRY", "ODOMETRY", 0 );
-
-	//! @moos_subscribe	LOCALIZATION, LOCALIZATION_COV
-	AddMOOSVariable("LOCALIZATION", "LOCALIZATION", "LOCALIZATION", 0);
-	AddMOOSVariable("LOCALIZATION_COV", "LOCALIZATION_COV", "LOCALIZATION_COV", 0);
+{	
+	//! @moos_subscribe	LOCALIZATION
+	AddMOOSVariable("LOCALIZATION", "LOCALIZATION", "LOCALIZATION", 0);	
 
 	//! @moos_subscribe	LASER1, LASER2
 	AddMOOSVariable("LASER1","LASER1","LASER1", 0);
 	AddMOOSVariable("LASER2","LASER2","LASER2", 0);
 
-	//! @moos_subscribe	KINECT
+	//! @moos_subscribe	KINECT1
 	AddMOOSVariable("KINECT1", "KINECT1", "KINECT1", 0);
 	
 	//! @moos_subscribe	NAVIGATE_TARGET
 	AddMOOSVariable("NAVIGATE_TARGET", "NAVIGATE_TARGET", "NAVIGATE_TARGET", 0);
-
-	//! @moos_subscribe	NAVIGATE_CANCEL
-	AddMOOSVariable("NAVIGATE_CANCEL", "NAVIGATE_CANCEL", "NAVIGATE_CANCEL", 0);
-
+	
 	//! @moos_subscribe	CANCEL
 	AddMOOSVariable("CANCEL", "CANCEL", "CANCEL", 0);
 
@@ -236,7 +230,10 @@ bool CReacNavPTGApp3D::DoRegistrations()
 	AddMOOSVariable( "EST_GOODNESS", "EST_GOODNESS", "EST_GOODNESS", 0 );	
 
 	//! @moos_subscribe IRD_WARNING
-	AddMOOSVariable( "IRD_WARNING", "IRD_WARNING", "IRD_WARNING", 0 );	
+	AddMOOSVariable( "IRD_WARNING", "IRD_WARNING", "IRD_WARNING", 0 );
+
+	//! @moos_subscribe PNAVIGATORREACTIVEPTG3D_CMD
+	AddMOOSVariable( "PNAVIGATORREACTIVEPTG3D_CMD", "PNAVIGATORREACTIVEPTG3D_CMD", "PNAVIGATORREACTIVEPTG3D_CMD", 0 );
 
     RegisterMOOSVariables();
     return true;
@@ -248,25 +245,31 @@ bool CReacNavPTGApp3D::OnNewMail(MOOSMSG_LIST &NewMail)
     std::string cad;
 	for(MOOSMSG_LIST::iterator i=NewMail.begin();i!=NewMail.end();++i)
 	{
-		if( (i->GetName()=="SHUTDOWN") && (MOOSStrCmp(i->GetString(),"true")) )
+		const CMOOSMsg &m = *i;
+		
+		if( (MOOSStrCmp(m.GetKey(),"PNAVIGATORREACTIVEPTG3D_CMD")) && (MOOSStrCmp(m.GetString(),"CANCEL")) )		
 		{
-			// Disconnect comms:
-			MOOSTrace("Closing Module \n");
-			this->RequestQuit();
-		}
-		if( (i->GetName()=="PNAVIGATORREACTIVEPTG3D_CMD") && (MOOSStrCmp(i->GetString(),"CANCEL")))
-		{
-			// Pause navigation manually:
+			// Canell navigation manually:
+			printf("[NavigatorReactivePTG3D]: Canceling current reactive navigation\n");
 			m_navigator.m_navstate = CANCELLED; //previously as PAUSED;
-			m_navigator.m_dynfeatures.new_cmd_v = 0;
-			m_navigator.m_dynfeatures.new_cmd_w = 0;
+			m_navigator.m_dynfeatures.new_cmd_v = 0.0;
+			m_navigator.m_dynfeatures.new_cmd_w = 0.0;
 			changeSpeeds(m_navigator.m_dynfeatures.new_cmd_v,m_navigator.m_dynfeatures.new_cmd_w);
 		}
-		if (i->GetName()=="IRD_WARNING")
-			if (MOOSStrCmp(i->GetString(),"true"))
+
+		if( MOOSStrCmp(m.GetKey(),"IRD_WARNING") )			
+		{
+			if( MOOSStrCmp(m.GetString(),"true") )
 				m_ird_warning = true;
 			else
 				m_ird_warning = false;
+		}
+		
+		if( (MOOSStrCmp(m.GetKey(),"SHUTDOWN")) && (MOOSStrCmp(m.GetString(),"true")) )
+		{
+			MOOSTrace("Closing Module \n");
+			this->RequestQuit();			
+		}
 	}
 
     UpdateMOOSVariables(NewMail);
@@ -295,8 +298,9 @@ bool CReacNavPTGApp3D::DoReactiveNavigation()
 		switch (m_navigator.m_navstate)
 		{
 		case (CANCELLED):
-			m_Comms.Notify("SHUTDOWN",1);
-			break;
+			//JGMonroy
+			//m_Comms.Notify("SHUTDOWN",1);
+			//break;
 
 		case (PAUSED):
 

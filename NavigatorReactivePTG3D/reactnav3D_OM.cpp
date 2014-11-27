@@ -719,6 +719,19 @@ void CReactiveNavigator::PTGGridBuilder(CMissionReader2ConfigFile_adaptor config
 		TParameters<double> params;
 		CParameterizedTrajectoryGenerator *ptgaux;
 
+		// Read RobotID and ensure the PTG directory is created.
+		configRobot.enableSectionNames(true);
+		//! @moos_param robotID The unique identifier of the robot (common parameter).
+		std::string robotID = configRobot.read_string("CommonParams","robotID","noID",false);
+		configRobot.disableSectionNames();
+		if( robotID != "noID" )
+		{
+			if( !mrpt::system::directoryExists("PTGs") )
+				mrpt::system::createDirectory("PTGs");
+			if( !mrpt::system::directoryExists(format("PTGs/%s",robotID.c_str())) )
+				mrpt::system::createDirectory(format("PTGs/%s",robotID.c_str()));
+		}
+
 		num_ptgs = configRobot.read_int("","PTG_COUNT", 1, true);
 		params["ref_distance"] = configRobot.read_float("","MAX_DISTANCE_PTG", 1, true);
 		params["resolution"] = configRobot.read_float("","GRID_RESOLUTION", 0.03, true);
@@ -760,9 +773,16 @@ void CReactiveNavigator::PTGGridBuilder(CMissionReader2ConfigFile_adaptor config
 				m_ptgmultilevel[j-1].PTGs.push_back(ptgaux);
 				m_ptgmultilevel[j-1].PTGs[i-1]->simulateTrajectories(num_alfas,75, m_dynfeatures.refDistance, 600, 0.01f, 0.015f);
 				//Arguments -> n_alfas, max.tim, max.dist (ref_distance), max.n, diferencial_t, min_dist
-				build_PTG_collision_grids(m_ptgmultilevel[j-1].PTGs[i-1], shape[i-1],
-											format("ReacNavGrid_PTG%03u_L%02u.dat.gz",i,j), 1);
-
+				if( robotID == "noID" )
+				{
+					build_PTG_collision_grids(m_ptgmultilevel[j-1].PTGs[i-1], shape[i-1],
+					format("ReacNavGrid_PTG%03u_L%02u.dat.gz",i,j), 1);
+				}
+				else
+				{
+					build_PTG_collision_grids(m_ptgmultilevel[j-1].PTGs[i-1], shape[i-1],
+					format("PTGs/%s/ReacNavGrid_PTG%03u_L%02u.dat.gz",robotID.c_str(),i,j), 1);
+				}
 			}
 		}
 	}

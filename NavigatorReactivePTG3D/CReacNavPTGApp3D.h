@@ -64,7 +64,7 @@ protected:
 	float								m_maxw;
 	bool								m_memory_on;
 	bool								m_event_sent;
-	bool								m_ird_warning;
+	bool								m_ird_warning;	
 
 
 	vector <mrpt::slam::COccupancyGridMap2D>	m_dyngrid;
