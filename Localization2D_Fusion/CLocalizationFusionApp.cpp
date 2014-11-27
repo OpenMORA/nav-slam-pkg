@@ -130,7 +130,7 @@ bool CLocalizationFusionApp::PublishCurrentBestLocalization()
 		m_Comms.Notify("LOCALIZATION_COV", sPoseCov );
 	}
 
-	// Get odometry as Obs (Serializable Object):
+	// Get Localization as Obs (Serializable Object):
 		mrpt::slam::CObservationOdometryPtr locObs = mrpt::slam::CObservationOdometry::Create();
 		locObs->sensorLabel = "LOCALIZATION";
 		locObs->odometry = poseMean;
