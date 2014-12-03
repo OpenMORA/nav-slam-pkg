@@ -26,6 +26,12 @@
    |                                                                           |
    +---------------------------------------------------------------------------+ */
 
+/**  @moos_module A generic reactive navigator with 3D obstacles.
+  *  This module is a wrapper to the MRPT navigator class mrpt::reactivenav::CReactiveNavigationSystem </a>. <br>
+  *  The internal algorithm is a purely reactive method (the Nearness Diagram Navigation) within one or more 
+  *  Parameterized Trajectory Generators (PTG) that abstract the robot shape and kinematic restrictions.
+  *	  
+  */
 
 #include "CReacNavPTGApp3D.h"
 #include <sstream>
@@ -100,12 +106,14 @@ bool CReacNavPTGApp3D::OnCommandMsg( CMOOSMsg Msg )
     else if(MOOSStrCmp(sCmd,"PAUSE"))
     {
 		m_navigator.m_navstate = PAUSED;
+		printf("[NavigatorReactive]: PAUSED\n");
 		this->SendSystemLogString("Navigation has been paused.");
 	}
 	//!  @moos_cmd   RESUME  Resume a paused navigation.
     else if(MOOSStrCmp(sCmd,"RESUME"))
     {
 		m_navigator.m_navstate = ACTIVE;
+		printf("[NavigatorReactive]: ACTIVE\n");
 		this->SendSystemLogString("Paused navigation has been resumed.");
 	}
 
@@ -117,29 +125,40 @@ bool CReacNavPTGApp3D::DoNavigatorReset()
 	// Load parameters from moos config file:
 	try
 	{
-		// Reload config:
+		// Reload config parameters:
 		m_navigator.loadRobotConfiguration(m_ini);
 		m_navigator.m_logFile = NULL;
 		m_navigator.EnableLogFile(m_navigator.m_logFile);
 
+		//! @moos_param  Opengl_scene
 		m_visualization = m_ini.read_bool("","Opengl_scene", 0, false);
+		//! @moos_param  Memory_on
 		m_memory_on = m_ini.read_bool("","Memory_on", 1, false);
+		//! @moos_param  Vred_a
 		vred_a = m_ini.read_float("","Vred_a", 1, false);
+		//! @moos_param  Vred_b
 		vred_b = m_ini.read_float("","Vred_b", 0.2, false);
+		//! @moos_param  VMIN_MPS
 		m_minv = m_ini.read_float("","VMIN_MPS", 0.1, false);
+		//! @moos_param  WMIN_DEGPS
 		m_minw = DEG2RAD(m_ini.read_float("","WMIN_DEGPS", 10, false));
+		//! @moos_param  VMAX_MPS
 		m_maxv = m_ini.read_float("","VMAX_MPS", 0.6, false);
+		//! @moos_param  WMAX_DEGPS
 		m_maxw = DEG2RAD(m_ini.read_float("","WMAX_DEGPS", 60, false));
+		//! @moos_param  LOG_DECIMATION
 		m_log_decimation = m_ini.read_uint64_t("","LOG_DECIMATION", 1, false);
 		m_iteration = 0;
 		m_ird_warning = 0;
 
 		//Speed initial values
-		m_navigator.m_dynfeatures.new_cmd_v = 0;
-		m_navigator.m_dynfeatures.new_cmd_w = 0;
+		m_navigator.m_dynfeatures.new_cmd_v = 0.0;
+		m_navigator.m_dynfeatures.new_cmd_w = 0.0;
 
 		//Set the initial state as PAUSED
 		m_navigator.m_navstate = PAUSED;
+		printf("[NavigatorReactive]: Initialized as PAUSED\n");
+
 		
 		//Create the collision grid
 		m_navigator.PTGGridBuilder(m_ini);
@@ -164,29 +183,6 @@ bool CReacNavPTGApp3D::Iterate()
 {
 	try
 	{
-		// Do we have a new navigation command??
-		CMOOSVariable *pVarNav = GetMOOSVar( "NAVIGATE_TARGET" );
-		if(pVarNav && pVarNav->IsFresh())
-		{
-			pVarNav->SetFresh(false);
-			CMatrixDouble M;
-			if (M.fromMatlabStringFormat(pVarNav->GetStringVal()) && size(M,1)==1 && size(M,2)>=2)
-			{
-				m_event_sent = 0;
-				m_navigator.m_reactiveparam.WS_Target.x(M(0,0));
-				m_navigator.m_reactiveparam.WS_Target.y(M(0,1));
-				m_navigator.m_navstate = ACTIVE;
-
-				//Center the Neck
-				m_Comms.Notify("NECKMSG","SERVO=0,ANG=0,SPEED=60,FILTER=1");
-				
-				//! @moos_publish MORA_GLOBAL_LOG
-				this->SendSystemLogString(format("Starting navigation to (%.02f,%.02f).",
-								m_navigator.m_reactiveparam.WS_Target[0], m_navigator.m_reactiveparam.WS_Target[1]));
-			}
-			else MOOSTrace("ERROR: Invalid format of NAVIGATE_TARGET");
-		}
-
 		// It runs the the reactive algorithm.
 		return DoReactiveNavigation();
 
@@ -246,12 +242,39 @@ bool CReacNavPTGApp3D::OnNewMail(MOOSMSG_LIST &NewMail)
 	for(MOOSMSG_LIST::iterator i=NewMail.begin();i!=NewMail.end();++i)
 	{
 		const CMOOSMsg &m = *i;
+
+		// NAVIGATE_TARGET x y
+		if( MOOSStrCmp(m.GetKey(),"NAVIGATE_TARGET") )
+		{		
+			CMatrixDouble M;
+			if (M.fromMatlabStringFormat(m.GetString()) && size(M,1)==1 && size(M,2)>=2)
+			{
+				m_event_sent = 0;
+				m_navigator.m_reactiveparam.WS_Target.x(M(0,0));
+				m_navigator.m_reactiveparam.WS_Target.y(M(0,1));
+				m_navigator.m_navstate = ACTIVE;
+				printf("[NavigatorReactive]: ACTIVE\n");
+
+				//Center the Neck
+				//! @moos_publish NECKMSG
+				m_Comms.Notify("NECKMSG","SERVO=0,ANG=0,SPEED=60,FILTER=1");
+				
+				//! @moos_publish MORA_GLOBAL_LOG
+				this->SendSystemLogString(format("Starting navigation to (%.02f,%.02f).",
+								m_navigator.m_reactiveparam.WS_Target[0], m_navigator.m_reactiveparam.WS_Target[1]));
+			}
+			else 
+				MOOSTrace("[ReactiveNavigator3D]: ERROR - Invalid format of NAVIGATE_TARGET");
+		}
+
+
 		
 		if( (MOOSStrCmp(m.GetKey(),"PNAVIGATORREACTIVEPTG3D_CMD")) && (MOOSStrCmp(m.GetString(),"CANCEL")) )		
 		{
 			// Canell navigation manually:
 			printf("[NavigatorReactivePTG3D]: Canceling current reactive navigation\n");
-			m_navigator.m_navstate = CANCELLED; //previously as PAUSED;
+			m_navigator.m_navstate = PAUSED;
+			printf("[NavigatorReactive]: PAUSED\n");
 			m_navigator.m_dynfeatures.new_cmd_v = 0.0;
 			m_navigator.m_dynfeatures.new_cmd_w = 0.0;
 			changeSpeeds(m_navigator.m_dynfeatures.new_cmd_v,m_navigator.m_dynfeatures.new_cmd_w);
@@ -277,6 +300,8 @@ bool CReacNavPTGApp3D::OnNewMail(MOOSMSG_LIST &NewMail)
 }
 
 
+
+// The main function, executed in the iterate loop
 bool CReacNavPTGApp3D::DoReactiveNavigation()
 {
 	try
@@ -294,25 +319,20 @@ bool CReacNavPTGApp3D::DoReactiveNavigation()
 
 		// Do navigation step:
 		// --------------------------------------------------
-
 		switch (m_navigator.m_navstate)
 		{
-		case (CANCELLED):
-			//JGMonroy
+		case (CANCELLED):			
 			//m_Comms.Notify("SHUTDOWN",1);
-			//break;
+			break;
 
 		case (PAUSED):
-
-			//Update the robot pose
+			//Only Update the robot pose
 			m_last_pose = m_navigator.m_dynfeatures.curpose;
 			getCurrentPoseAndSpeeds( m_navigator.m_dynfeatures.curpose, vaux, waux);
 			m_navigator.m_robmov.setRealPose( m_navigator.m_dynfeatures.curpose);			
-			
 			break;
 
 		case (WAITING):
-
 			//Update the robot pose
 			m_last_pose = m_navigator.m_dynfeatures.curpose;
 			getCurrentPoseAndSpeeds( m_navigator.m_dynfeatures.curpose, vaux, waux);
@@ -346,6 +366,7 @@ bool CReacNavPTGApp3D::DoReactiveNavigation()
 				m_navigator.m_dynfeatures.new_cmd_v = 0;
 				m_navigator.m_dynfeatures.new_cmd_w = 0;
 				m_navigator.m_navstate = ACTIVE;
+				printf("[NavigatorReactive]: ACTIVE\n");
 			}
 
 			//Save log file if pertinent
@@ -356,15 +377,20 @@ bool CReacNavPTGApp3D::DoReactiveNavigation()
 			}
 
 			//Move backward to find an alternative
-			if (m_stepback_clock.Tac() < 3)
+			if (m_stepback_clock.Tac() < 6)
+			{
+				printf("[NavigatorReactive]: Moving Backward to find alternative\n");
 				changeSpeeds( -0.1, 0);
+			}
 			else
+			{
+				printf("[NavigatorReactive]: No alternative found. Keep waiting.\n");
 				changeSpeeds( 0, 0);
+			}
 
 			break;
 
 		case (ACTIVE):
-
 			//Update the robot pose
 			m_last_pose = m_navigator.m_dynfeatures.curpose;
 			getCurrentPoseAndSpeeds( m_navigator.m_dynfeatures.curpose, vaux, waux);
@@ -461,6 +487,7 @@ bool CReacNavPTGApp3D::DoReactiveNavigation()
 				m_navigator.m_dynfeatures.new_cmd_v = 0;
 				m_navigator.m_dynfeatures.new_cmd_w = 0;
 				m_navigator.m_navstate = PAUSED;
+				printf("[NavigatorReactive]: PAUSED\n");
 			}
 
 			//Change to "WAITING" state
@@ -470,6 +497,7 @@ bool CReacNavPTGApp3D::DoReactiveNavigation()
 				m_navigator.m_dynfeatures.new_cmd_w = 0;
 				m_navigator.m_navstate = WAITING;
 				m_stepback_clock.Tic();
+				printf("[NavigatorReactive]: WAITING\n");
 			}
 
 			changeSpeeds(m_navigator.m_dynfeatures.new_cmd_v,m_navigator.m_dynfeatures.new_cmd_w);
@@ -486,10 +514,9 @@ bool CReacNavPTGApp3D::DoReactiveNavigation()
 		}
 
 		//cout << endl << "Tiempo total: " << ctest.Tac();
-
 		m_reactive_period = m_reactive_clock.Tac();
 		m_reactive_clock.Tic();
-		cout << endl << "Reactive period: " << m_reactive_period << " seconds";
+		//cout << endl << "[NavigatorReactive3D]: Reactive period: " << m_reactive_period << " seconds";
 		m_iteration++;
 
 		return true;
@@ -548,7 +575,7 @@ bool CReacNavPTGApp3D::changeSpeeds( float v, float w )
 	//!  @moos_publish   MOTION_CMD_W  The desired robot angular speed (rad/s)
 	m_Comms.Notify("MOTION_CMD_V", v );
 	m_Comms.Notify("MOTION_CMD_W", w );
-
+	printf("[NavigatorReactive3D]: Motion_cmd_v/W = %0.3f m/s , %0.3f rad/s \n",v,w);
 	return true;
 }
 
@@ -612,6 +639,7 @@ void CReacNavPTGApp3D::sensorDataToReactive(CReactiveNavigator &nav)
 {
 	CMOOSVariable *pVarLaser1 = GetMOOSVar( "LASER1" );
 	CMOOSVariable *pVarLaser2 = GetMOOSVar( "LASER2" );
+	CMOOSVariable *pVarkinect = GetMOOSVar( "KINECT1" );
 
 	CSerializablePtr obj;
 
@@ -635,8 +663,7 @@ void CReacNavPTGApp3D::sensorDataToReactive(CReactiveNavigator &nav)
 			nav.m_robot.m_lasers[1].m_scan = *CObservation2DRangeScanPtr(obj);
 	}
 
-	//Kinect
-	CMOOSVariable *pVarkinect = GetMOOSVar( "KINECT1" );
+	//Kinect	
 	if(pVarkinect && pVarkinect->IsFresh())
 	{
 		pVarkinect->SetFresh(false);
@@ -646,14 +673,22 @@ void CReacNavPTGApp3D::sensorDataToReactive(CReactiveNavigator &nav)
 	}
 }
 
+
 void CReacNavPTGApp3D::InitializeObstacleGrid()
 {
+	//! @moos_param  Obs_grid_length
 	float grid_length = m_ini.read_float("","Obs_grid_length", 0.8, 1);
+	//! @moos_param  Obs_grid_resolution
 	float grid_resolution = m_ini.read_float("","Obs_grid_resolution", 0.1, 1);
+	//! @moos_param  Vision_limit
 	m_vision_limit = m_ini.read_float("","Vision_limit", 0.6, 1);
+	//! @moos_param  Pos_likelihood_incr
 	m_pos_likelihood_incr = m_ini.read_float("","Pos_likelihood_incr", 0.55, 1);
+	//! @moos_param  Neg_likelihood_incr
 	m_neg_likelihood_incr = m_ini.read_float("","Neg_likelihood_incr", 0.45, 1);
+	//! @moos_param  Occupancy_threshold
 	m_occupancy_threshold = m_ini.read_float("","Occupancy_threshold", 0.8, 1);
+	//! @moos_param  Likelihood_threshold
 	m_reloc_threshold = m_ini.read_float("","Likelihood_threshold", -2, 1);
 
 	m_robot_ingrid.x = 0;
@@ -665,6 +700,7 @@ void CReacNavPTGApp3D::InitializeObstacleGrid()
 		m_dyngrid[i].setSize(-grid_length, grid_length, -grid_length, grid_length, grid_resolution, 0.5);
 	}
 }
+
 
 void CReacNavPTGApp3D::UpdateObstacleGrid()
 {

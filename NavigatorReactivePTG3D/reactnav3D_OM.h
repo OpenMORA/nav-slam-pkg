@@ -7,6 +7,7 @@
 #include <mrpt/opengl.h>
 #include <mrpt/gui/CDisplayWindow3D.h>
 #include <mrpt/reactivenav.h>
+#include <mrpt/nav.h>
 #include <COpenMORAMOOSApp.h>
 
 using namespace mrpt;

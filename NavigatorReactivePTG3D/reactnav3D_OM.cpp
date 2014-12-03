@@ -8,10 +8,9 @@
 #include <iostream>
 #include <mrpt/utils/metaprogramming.h>
 
-//Function which reads the geometric parameters of the robot, as well as the lasers and kinects configuration
-//-----------------------------------------------------------------------------------------------------------
 
-
+// loadRobotConfiguration: reads the geometric parameters of the robot, as well as the lasers and RGBD cameras configuration
+//--------------------------------------------------------------------------------------------------------------------------
 void CReactiveNavigator::loadRobotConfiguration(CMissionReader2ConfigFile_adaptor configRobot)
 {
 	try
@@ -20,12 +19,18 @@ void CReactiveNavigator::loadRobotConfiguration(CMissionReader2ConfigFile_adapto
 		unsigned int num_levels,num_lasers,num_kinects;
 		vector <float> xaux,yaux,lasercoord;
 
+		// 1. Read Robot Geometry
+		//-----------------------
+		//! @moos_param HEIGHT_LEVELS Number of heights to define the robot geometry (3D) 
 		num_levels = configRobot.read_int("pMobileRobot_Simul3D","HEIGHT_LEVELS", 1, true);
 		m_robot.m_levels.resize(num_levels);
 		for (unsigned int i=1;i<=num_levels;i++)
 		{
+			//! @moos_param LEVEL(X)_HEIGHT The height of the (X) plane defining the robot geometry
 			m_robot.m_levels[i-1].m_height = configRobot.read_float("",format("LEVEL%d_HEIGHT",i), 1, true);
+			//! @moos_param LEVEL(X)_VECTORX Vector of Xcoordinate points defining the robot geometry at height (X)
 			configRobot.read_vector("",format("LEVEL%d_VECTORX",i), vector<float> (0), xaux, false);
+			//! @moos_param LEVEL(X)_VECTORY Vector of Ycoordinate points defining the robot geometry at height (X)
 			configRobot.read_vector("",format("LEVEL%d_VECTORY",i), vector<float> (0), yaux, false);
 			for (unsigned int j=0;j<xaux.size();j++)
 			{
@@ -35,6 +40,8 @@ void CReactiveNavigator::loadRobotConfiguration(CMissionReader2ConfigFile_adapto
 			}
 		}
 
+		// 2. Read Lasers
+		//-----------------------
 		num_lasers = configRobot.read_int("","N_LASERS", 1, true);
 		m_robot.m_lasers.resize(num_lasers);
 		for (unsigned int i=1;i<=num_lasers;i++)
@@ -48,6 +55,9 @@ void CReactiveNavigator::loadRobotConfiguration(CMissionReader2ConfigFile_adapto
 			m_robot.m_lasers[i-1].m_segments = configRobot.read_int("",format("LASER%d_SEGMENTS",i), 181, true);
 		}
 
+
+		// 3. Read RGBD cameras
+		//-----------------------
 		num_kinects = configRobot.read_int("","N_KINECTS", 1, true );
 		m_robot.m_kinects.resize(num_kinects);
 		for (unsigned int i=1;i<=num_kinects;i++)
@@ -67,22 +77,40 @@ void CReactiveNavigator::loadRobotConfiguration(CMissionReader2ConfigFile_adapto
 			m_robot.m_kinects[i-1].m_std_error = configRobot.read_float("",format("KINECT%d_STD_ERROR",i), 0.05, true);
 		}
 
-		m_dynfeatures.pos_ini.x(configRobot.read_float("","X0", 0, true));
-		m_dynfeatures.pos_ini.y(configRobot.read_float("","Y0", 0, true));
-		m_dynfeatures.pos_ini.phi(DEG2RAD(configRobot.read_float("","PHI0", 0, true)));
-		m_dynfeatures.robotMax_V_mps = configRobot.read_float("","VMAX_MPS", 1, true);
-		m_dynfeatures.robotMax_W_degps = configRobot.read_float("","WMAX_DEGPS", 30, true);
-		m_dynfeatures.ROBOTMODEL_DELAY = configRobot.read_float("","ROBOTMODEL_DELAY", 0, true);
-		m_dynfeatures.ROBOTMODEL_TAU = configRobot.read_float("","ROBOTMODEL_TAU", 0, true);
-		m_dynfeatures.refDistance = configRobot.read_float("","MAX_DISTANCE_PTG", 1, true);
-		m_reactiveparam.WS_Target.x(configRobot.read_float("","X_TARGET", 1, true));
-		m_reactiveparam.WS_Target.y(configRobot.read_float("","Y_TARGET", 1, true));
-		m_reactiveparam.m_reload_ptgfiles = configRobot.read_bool("","RELOAD_PTGFILES", 1, true);
-		m_reactiveparam.m_recordLogFile = configRobot.read_bool("","RECORD_LOGFILE", 0, true);
 
+		// 4. Read Parameters for Navigation
+		//------------------------------------
+		//! @moos_param X0 The initial robot location
+		m_dynfeatures.pos_ini.x(configRobot.read_float("","X0", 0, true));
+		//! @moos_param Y0 The initial robot location
+		m_dynfeatures.pos_ini.y(configRobot.read_float("","Y0", 0, true));
+		//! @moos_param PHI0 The initial robot angle in degrees
+		m_dynfeatures.pos_ini.phi(DEG2RAD(configRobot.read_float("","PHI0", 0, true)));
+
+		//! @moos_param VMAX_MPS The max robot linear speed
+		m_dynfeatures.robotMax_V_mps = configRobot.read_float("","VMAX_MPS", 1, true);
+		//! @moos_param WMAX_DEGPS The max robot angular speed
+		m_dynfeatures.robotMax_W_degps = configRobot.read_float("","WMAX_DEGPS", 30, true);
+		//! @moos_param ROBOTMODEL_DELAY The delay until robot reaction
+		m_dynfeatures.ROBOTMODEL_DELAY = configRobot.read_float("","ROBOTMODEL_DELAY", 0, true);
+		//! @moos_param 
+		m_dynfeatures.ROBOTMODEL_TAU = configRobot.read_float("","ROBOTMODEL_TAU", 0, true);
+		//! @moos_param
+		m_dynfeatures.refDistance = configRobot.read_float("","MAX_DISTANCE_PTG", 1, true);
+		//! @moos_param
+		m_reactiveparam.WS_Target.x(configRobot.read_float("","X_TARGET", 1, true));
+		//! @moos_param
+		m_reactiveparam.WS_Target.y(configRobot.read_float("","Y_TARGET", 1, true));
+		//! @moos_param
+		m_reactiveparam.m_reload_ptgfiles = configRobot.read_bool("","RELOAD_PTGFILES", 1, true);
+		//! @moos_param
+		m_reactiveparam.m_recordLogFile = configRobot.read_bool("","RECORD_LOGFILE", 0, true);
+		//! @moos_param
 		configRobot.read_vector("","weights", vector<float> (0), m_reactiveparam.weights, 1);
 
+		//! @moos_param
 		m_reactiveparam.m_holonomicmethod = configRobot.read_bool("","HOLONOMIC_METHOD", 0, true);
+		//! @moos_param
 		unsigned num_ptg = configRobot.read_int("","PTG_COUNT", 1, true);
 		m_holonomicND.resize(num_ptg);
 		CConfigFileBase *configFile;
