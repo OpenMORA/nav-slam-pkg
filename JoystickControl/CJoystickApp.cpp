@@ -217,7 +217,7 @@ bool CJoystickApp::OnNewMail(MOOSMSG_LIST &NewMail)
 				printf("[Joystick]: Module Disabled.\n");
 				//Stop the robot and set to mode manual
 				//! @moos_publish CANCEL_NAVIGATION
-				m_Comms.Notify("CANCEL_NAVIGATION", 1.0);
+				m_Comms.Notify("CANCEL_NAVIGATION", "Joystick - Disabled");
 			}
 			else if( i->GetString() == "1" )
 			{
