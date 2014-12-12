@@ -168,7 +168,7 @@ bool CLocalizationFusionApp::DoRegistrations()
 	//! @moos_subscribe ODO_REFERENCE
 	m_Comms.Register("ODO_REFERENCE", 0 );
 	
-	//! @moos_subscribe ODOMETRY
+	//! @moos_subscribe ODOMETRY_OBS
 	m_Comms.Register("ODOMETRY_OBS", 0 );
 
 	//! @moos_subscribe LOCALIZATION_PF, LOCALIZATION_COV_PF
@@ -237,7 +237,7 @@ bool CLocalizationFusionApp::OnNewMail(MOOSMSG_LIST &NewMail)
 				}
 				else
 				{
-					cerr << "ODOMETRY is not CObservationOdometry" << endl;
+					cerr << "ODOMETRY_OBS is not CObservationOdometry" << endl;
 				}
 
 			}

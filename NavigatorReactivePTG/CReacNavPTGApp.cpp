@@ -530,7 +530,7 @@ void CReacNavPTGApp::prepareObstaclesMemory()
 		{
 			pVarObs->SetFresh(false);
 			CSerializablePtr obj;
-			StringToObject(pVarObs->GetStringVal(), obj);
+			mrpt::utils::RawStringToObject(pVarObs->GetStringVal(),obj);
 			if (obj && IS_DERIVED(obj,CObservation))
 			{
 				CObservationPtr obs = CObservationPtr(obj);
@@ -618,7 +618,7 @@ void CReacNavPTGApp::prepareObstaclesNoWin()
 			{
 				pVarObs->SetFresh(false);
 				CSerializablePtr obj;
-				StringToObject(pVarObs->GetStringVal(), obj);
+				mrpt::utils::RawStringToObject(pVarObs->GetStringVal(),obj);				
 				if (obj && IS_DERIVED(obj,CObservation))
 				{
 					CObservationPtr obs = CObservationPtr(obj);
@@ -655,7 +655,7 @@ void CReacNavPTGApp::prepareObstaclesTemporalWin()
 		{
 			pVarObs->SetFresh(false);
 			CSerializablePtr obj;
-			StringToObject(pVarObs->GetStringVal(), obj);
+			mrpt::utils::RawStringToObject(pVarObs->GetStringVal(),obj);			
 			if (obj && IS_DERIVED(obj,CObservation))
 			{
 				CObservationPtr obs = CObservationPtr(obj);
@@ -806,7 +806,7 @@ void CReacNavPTGApp::prepareObstaclesPoseWin()
 		{
 			pVarObs->SetFresh(false);
 			CSerializablePtr obj;
-			StringToObject(pVarObs->GetStringVal(), obj);
+			mrpt::utils::RawStringToObject(pVarObs->GetStringVal(),obj);			
 			if (obj && IS_DERIVED(obj,CObservation))
 			{
 				CObservationPtr obs = CObservationPtr(obj);
