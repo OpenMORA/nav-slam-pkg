@@ -41,21 +41,15 @@
 
 using namespace std;
 using namespace mrpt;
-using namespace mrpt::slam;
 using namespace mrpt::utils;
 using namespace mrpt::system;
 using namespace mrpt::poses;
 using namespace mrpt::math;
-using namespace mrpt::reactivenav;
+using namespace mrpt::nav;
+using namespace mrpt::obs;
+using namespace mrpt::opengl;
+using namespace mrpt::maps;
 
-
-//CReacNavPTGApp::CReacNavPTGApp() :
-//{
-//}
-
-//CReacNavPTGApp::~CReacNavPTGApp()
-//{
-//}
 
 
 bool CReacNavPTGApp3D::OnStartUp()

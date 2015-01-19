@@ -45,8 +45,8 @@ protected:
 	// DATA
 	CReactiveNavigator	m_navigator;
 
-	mrpt::slam::CSimplePointsMap		m_gridpoints;
-	mrpt::slam::COccupancyGridMap2D		m_memory;
+	mrpt::maps::CSimplePointsMap		m_gridpoints;
+	mrpt::maps::COccupancyGridMap2D		m_memory;
 	mrpt::poses::CPose2D				m_last_pose;
 	mrpt::math::TPoint2D				m_robot_ingrid;
 	float								m_vision_limit;
@@ -67,10 +67,10 @@ protected:
 	bool								m_ird_warning;	
 
 
-	vector <mrpt::slam::COccupancyGridMap2D>	m_dyngrid;
+	std::vector <mrpt::maps::COccupancyGridMap2D>	m_dyngrid;
 
-	CTicTac		m_reactive_clock;
-	CTicTac		m_stepback_clock;
+	mrpt::utils::CTicTac		m_reactive_clock;
+	mrpt::utils::CTicTac		m_stepback_clock;
 	float		m_reactive_period;
 	bool		m_visualization;
 	unsigned	m_iteration;
@@ -120,7 +120,7 @@ protected:
 		 *	 \param curW Current angular speed, in radians per second.
 		 * \return false on any error.
 		 */
-		bool getCurrentPoseAndSpeeds( CPose2D &curPose, float &curV, float &curW);
+		bool getCurrentPoseAndSpeeds( mrpt::poses::CPose2D &curPose, float &curV, float &curW);
 
 		/** Change the instantaneous speeds of robot.
 		 *   \param v Linear speed, in meters per second.

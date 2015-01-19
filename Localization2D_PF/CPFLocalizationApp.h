@@ -31,7 +31,7 @@
 
 #include <COpenMORAMOOSApp.h>
 #include <mrpt/slam/CMonteCarloLocalization2D.h>
-#include <mrpt/slam/COccupancyGridMap2D.h>
+#include <mrpt/maps/COccupancyGridMap2D.h>
 #include <mrpt/poses/CPose2D.h>
 
 class CPFLocalizationApp : public COpenMORAApp
@@ -51,13 +51,13 @@ protected:
 	mrpt::bayes::CParticleFilter		m_PF;
 
 	/** The map */
-	mrpt::slam::COccupancyGridMap2D	m_gridmap;
+	mrpt::maps::COccupancyGridMap2D	m_gridmap;
 
 	mrpt::poses::CPose2D	m_lastOdo;
 	bool					m_firstOdo; //!< true if the next one will be the first odometry
 
 	/** Motion model options */
-	mrpt::slam::CActionRobotMovement2D::TMotionModelOptions	m_motionModel;
+	mrpt::obs::CActionRobotMovement2D::TMotionModelOptions	m_motionModel;
 
 	double	m_unif_x_min, m_unif_x_max, m_unif_y_min, m_unif_y_max;
 	double	m_reloc_threshold;

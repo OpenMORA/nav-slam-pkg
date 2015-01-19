@@ -47,12 +47,13 @@
 using namespace std;
 
 using namespace mrpt;
-using namespace mrpt::slam;
 using namespace mrpt::utils;
 using namespace mrpt::system;
 using namespace mrpt::poses;
 using namespace mrpt::math;
-using namespace mrpt::reactivenav;
+using namespace mrpt::nav;
+using namespace mrpt::obs;
+using namespace mrpt::maps;
 
 
 CReacNavPTGApp::CReacNavPTGApp() :
@@ -419,7 +420,7 @@ bool CReacNavPTGApp::stopWatchdog()
 /** Return the current set of obstacle points.
   * \return false on any error.
   */
-bool CReacNavPTGApp::senseObstacles( mrpt::slam::CSimplePointsMap &obstacles )
+bool CReacNavPTGApp::senseObstacles( mrpt::maps::CSimplePointsMap &obstacles )
 {
 	if (!m_obstacles_are_fresh)
 	{
@@ -671,7 +672,7 @@ void CReacNavPTGApp::prepareObstaclesTemporalWin()
 	// 2. Delete old obs in m_obs_win, kinect observations
 	size_t num_obs_to_delete = 0;
 
-	for ( std::map<mrpt::system::TTimeStamp, mrpt::slam::CObservationPtr>::const_iterator it = m_obs_win.begin();
+	for ( std::map<mrpt::system::TTimeStamp, mrpt::obs::CObservationPtr>::const_iterator it = m_obs_win.begin();
 		it != m_obs_win.end(); it++ )
 	{
 		//cout << "TIME DIFF: "  << timeDifference(it->first, mrpt::system::now());
@@ -709,7 +710,7 @@ void CReacNavPTGApp::prepareObstaclesTemporalWin()
 		// Obtain current pose
 		CPose2D curPose;
 
-		for ( std::map<mrpt::system::TTimeStamp, mrpt::slam::CObservationPtr>::const_iterator
+		for ( std::map<mrpt::system::TTimeStamp, mrpt::obs::CObservationPtr>::const_iterator
 		it = m_obs_win.begin(); it != m_obs_win.end(); it++ )
 		{
 			m_obstacles_are_fresh = true;

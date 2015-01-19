@@ -3,10 +3,18 @@
 #include <mrpt/opengl/CPlanarLaserScan.h>
 #include <mrpt/math/ops_containers.h> // sum()
 #include <mrpt/utils/CFileOutputStream.h>
-
-//#include <mrpt/reactivenav/CHolonomicVFF.h>
-#include <iostream>
 #include <mrpt/utils/metaprogramming.h>
+#include <iostream>
+
+
+using namespace std;
+using namespace mrpt;
+using namespace mrpt::obs;
+using namespace mrpt::maps;
+using namespace mrpt::nav;
+using namespace mrpt::opengl;
+using namespace mrpt::math;
+using namespace mrpt::maps;
 
 
 // loadRobotConfiguration: reads the geometric parameters of the robot, as well as the lasers and RGBD cameras configuration
@@ -170,7 +178,7 @@ void CReactiveNavigator::ShowRobotMotion ()
 	//The target is updated
 	{
 		obj = m_scene->getByName("Target");
-		obj->setPose( CPoint3D(m_reactiveparam.WS_Target[0], m_reactiveparam.WS_Target[1], 0));
+		obj->setPose( poses::CPoint3D(m_reactiveparam.WS_Target[0], m_reactiveparam.WS_Target[1], 0));
 		obj->setColor(0.2,0.3,0.9);
 	}
 
@@ -1090,7 +1098,7 @@ void CReactiveNavigator::EvaluateAllPTGs()
 	{
 		m_ptgmultilevel[i].holonomicmov.PTG = m_ptgmultilevel[i].PTGs[0];
 		PTG_Evaluator(m_ptgmultilevel[i].holonomicmov,m_ptgmultilevel[i].TPObstacles,
-			m_reactiveparam.rel_Target, CPoint2D(m_ptgmultilevel[i].TP_Target), this->m_newLogRec.infoPerPTG[i]);
+			m_reactiveparam.rel_Target, poses::CPoint2D(m_ptgmultilevel[i].TP_Target), this->m_newLogRec.infoPerPTG[i]);
 	}
 }
 

@@ -30,13 +30,13 @@
 #define CReacNavPTGApp_H
 
 #include <COpenMORAMOOSApp.h>
-#include <mrpt/slam/COccupancyGridMap2D.h>
-#include <mrpt/slam/CSimplePointsMap.h>
-#include <mrpt/reactivenav/CReactiveNavigationSystem.h>
+#include <mrpt/maps/COccupancyGridMap2D.h>
+#include <mrpt/maps/CSimplePointsMap.h>
+#include <mrpt//nav/reactive/CReactiveNavigationSystem.h>
 #include <mrpt/gui/CDisplayWindow.h>
 #include <mrpt/utils/aligned_containers.h>
 
-class CReacNavPTGApp : public COpenMORAApp, public mrpt::reactivenav::CReactiveInterfaceImplementation
+class CReacNavPTGApp : public COpenMORAApp, public mrpt::nav::CReactiveInterfaceImplementation
 {
 public:
     CReacNavPTGApp();
@@ -45,27 +45,27 @@ public:
 
 protected:
 	// DATA
-	mrpt::reactivenav::CReactiveNavigationSystem	m_navigator;
+	mrpt::nav::CReactiveNavigationSystem	m_navigator;
 
-	mrpt::slam::CSimplePointsMap 						m_obstacles;
-	mrpt::slam::CSimplePointsMap						m_virtual_obstacles;
-	mrpt::slam::COccupancyGridMap2D						m_memory;
+	mrpt::maps::CSimplePointsMap 						m_obstacles;
+	mrpt::maps::CSimplePointsMap						m_virtual_obstacles;
+	mrpt::maps::COccupancyGridMap2D						m_memory;
 
 	mrpt::gui::CDisplayWindowPtr   winMemoryMap;
 
 	bool												m_obstacles_are_fresh;
-	std::map<std::string, mrpt::slam::CObservationPtr> 	m_last_observations;
+	std::map<std::string, mrpt::obs::CObservationPtr> 	m_last_observations;
 
 	std::set<std::string>	m_subscribedObstacleSensors;
 
-	std::map<mrpt::system::TTimeStamp, mrpt::slam::CObservationPtr>  m_obs_win;
+	std::map<mrpt::system::TTimeStamp, mrpt::obs::CObservationPtr>  m_obs_win;
 
 	struct pose_obs_win_data
 	{
-		pose_obs_win_data( const mrpt::slam::CPose2D &p,const mrpt::slam::CObservationPtr &o )
+		pose_obs_win_data( const mrpt::poses::CPose2D &p,const mrpt::obs::CObservationPtr &o )
 			: pose(p), obs(o) {};
-		mrpt::slam::CPose2D	pose;
-		mrpt::slam::CObservationPtr obs;
+		mrpt::poses::CPose2D	pose;
+		mrpt::obs::CObservationPtr obs;
 	};
 
 	mrpt::aligned_containers<pose_obs_win_data>::vector_t m_pose_obs_win;
@@ -107,7 +107,7 @@ protected:
 	void prepareObstaclesPoseWin();
 	void prepareObstaclesMemory();
 
-	bool insertIntoPoseGrid( const mrpt::slam::CPose2D &curPose, mrpt::slam::CObservationPtr &obs, std::vector<size_t> &index_obs_in_current_pose );
+	bool insertIntoPoseGrid( const mrpt::poses::CPose2D &curPose, mrpt::obs::CObservationPtr &obs, std::vector<size_t> &index_obs_in_current_pose );
 
 
 
@@ -141,7 +141,7 @@ protected:
 		/** Return the current set of obstacle points.
 		  * \return false on any error.
 		  */
-		bool senseObstacles( mrpt::slam::CSimplePointsMap 		&obstacles );
+		bool senseObstacles( mrpt::maps::CSimplePointsMap &obstacles );
 
 		void sendNavigationStartEvent ();
 		void sendNavigationEndEvent();

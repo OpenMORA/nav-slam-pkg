@@ -33,11 +33,12 @@
   */
 
 #include "CPFLocalizationApp.h"
-#include <mrpt/slam/CMultiMetricMap.h>
-#include <mrpt/slam/CSimpleMap.h>
-#include <mrpt/slam/CActionCollection.h>
+#include <mrpt/maps/CMultiMetricMap.h>
+#include <mrpt/maps/CSimpleMap.h>
+#include <mrpt/obs/CActionCollection.h>
 #include <mrpt/utils/CFileGZInputStream.h>
 #include <mrpt/utils/CFileGZOutputStream.h>
+#include <mrpt/maps/CMultiMetricMap.h>
 #include <mrpt/random.h>
 #include <sstream>
 #include <iomanip>
@@ -47,6 +48,8 @@ using namespace std;
 using namespace mrpt;
 using namespace mrpt::slam;
 using namespace mrpt::utils;
+using namespace mrpt::maps;
+using namespace mrpt::obs;
 
 
 CPFLocalizationApp::CPFLocalizationApp() :
@@ -200,9 +203,9 @@ bool CPFLocalizationApp::OnPFReset()
 
 		// Create the PF object:
 		// --------------------------
-		CParticleFilter::TParticleFilterOptions		PF_options;
+		bayes::CParticleFilter::TParticleFilterOptions		PF_options;
 		PF_options.adaptiveSampleSize = true;
-		PF_options.PF_algorithm = CParticleFilter::pfStandardProposal;
+		PF_options.PF_algorithm = bayes::CParticleFilter::pfStandardProposal;
 
 		// Link the particles to its map:
 		m_PDF.options.metricMap = & m_gridmap;
@@ -482,7 +485,7 @@ bool CPFLocalizationApp::ProcessParticleFilter()
 		action.insert( act );
 
 		double t0 = MOOSTime();
-		CParticleFilter::TParticleFilterStats stats;
+		bayes::CParticleFilter::TParticleFilterStats stats;
 		m_PF.executeOn(
 			m_PDF,			// The PDF
 			&action,		// Action
