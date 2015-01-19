@@ -31,7 +31,7 @@
   */
 
 #include "CLocalizationFusionApp.h"
-#include <mrpt/slam/CObservationOdometry.h>
+#include <mrpt/obs/CObservationOdometry.h>
 #include <mrpt/system/threads.h>
 
 #include <sstream>
@@ -39,9 +39,8 @@
 #include <iostream>
 
 using namespace std;
-
 using namespace mrpt;
-using namespace mrpt::slam;
+using namespace obs;
 using namespace mrpt::utils;
 
 CLocalizationFusionApp::CLocalizationFusionApp() :
@@ -131,7 +130,7 @@ bool CLocalizationFusionApp::PublishCurrentBestLocalization()
 	}
 
 	// Get Localization as Obs (Serializable Object):
-		mrpt::slam::CObservationOdometryPtr locObs = mrpt::slam::CObservationOdometry::Create();
+		mrpt::obs::CObservationOdometryPtr locObs = mrpt::obs::CObservationOdometry::Create();
 		locObs->sensorLabel = "LOCALIZATION";
 		locObs->odometry = poseMean;
 		locObs->timestamp = now();
