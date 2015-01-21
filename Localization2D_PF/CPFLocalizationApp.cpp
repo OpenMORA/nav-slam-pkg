@@ -283,8 +283,8 @@ bool CPFLocalizationApp::Iterate()
 
 bool CPFLocalizationApp::PublishPFLocalization()
 {
-	CPose2D  			poseMean;
-	CMatrixDouble33 	poseCov;
+	mrpt::poses::CPose2D  			poseMean;
+	mrpt::math::CMatrixDouble33 	poseCov;
 	m_PDF.getCovarianceAndMean(poseCov,poseMean);
 
 	//! @moos_publish	EST_GOODNESS   The goodness of the robot pose estimation
@@ -390,14 +390,14 @@ bool CPFLocalizationApp::ProcessParticleFilter()
 {
 	try
 	{
-		CPose2D			 odometryIncrement(0,0,0);
+		mrpt::poses::CPose2D			 odometryIncrement(0,0,0);
 
 		// RELOCALIZE_IN_AREA ?
 		CMOOSVariable * pVarReloc = GetMOOSVar( "RELOCALIZE_IN_AREA" );
 		if(pVarReloc && pVarReloc->IsFresh())
 		{
 			pVarReloc->SetFresh(false);
-			CMatrixDouble M;
+			mrpt::math::CMatrixDouble M;
 			if ( M.fromMatlabStringFormat( pVarReloc->GetStringVal()) && size(M,1)>=1 && size(M,2)>=5 )
 			{
 				const unsigned int nParts = M(0,4);
@@ -424,7 +424,7 @@ bool CPFLocalizationApp::ProcessParticleFilter()
 		if(pVarOdo && pVarOdo->IsFresh())
 		{
 			pVarOdo->SetFresh(false);
-			CPose2D  cur_odo;
+			mrpt::poses::CPose2D  cur_odo;
 			cur_odo.fromString(pVarOdo->GetStringVal());
 
 			if (!m_firstOdo)
@@ -494,7 +494,7 @@ bool CPFLocalizationApp::ProcessParticleFilter()
 			
 		double At = MOOSTime() - t0;
 
-		CMatrixDouble cov;
+		mrpt::math::CMatrixDouble cov;
 		m_PDF.getCovariance(cov);
 
 		cout << endl << "Current odometry: " << m_lastOdo << endl;
@@ -502,9 +502,9 @@ bool CPFLocalizationApp::ProcessParticleFilter()
 		cout << "[PF] mean: " << m_PDF.getMeanVal() << " ESS " << stats.ESS_beforeResample << endl;
 		cout << "[PF] covariance norm: " << cov.norm() << endl;
 
-		CPose2D last_pose = m_PDF.getMeanVal();
+		mrpt::poses::CPose2D last_pose = m_PDF.getMeanVal();
 		//The particle considered doesn't seem to affect the value of "likelihood"...
-		m_pose_goodness = m_PDF.PF_SLAM_computeObservationLikelihoodForParticle(m_PF.m_options, 0, observations, CPose3D(last_pose[0],last_pose[1],0,last_pose[2],0,0));
+		m_pose_goodness = m_PDF.PF_SLAM_computeObservationLikelihoodForParticle(m_PF.m_options, 0, observations, mrpt::poses::CPose3D(last_pose[0],last_pose[1],0,last_pose[2],0,0));
 		cout << "[PF] The goodness of the estimated pose is " << m_pose_goodness << endl;
 		static double reloc_time;
 		
