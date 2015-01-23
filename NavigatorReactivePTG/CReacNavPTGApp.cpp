@@ -266,9 +266,9 @@ bool CReacNavPTGApp::DoRegistrations()
 	AddMOOSVariable("INFRARED1","INFRARED1","INFRARED1",0.08);
 	m_subscribedObstacleSensors.insert("INFRARED1");
 
-	//! @moos_subscribe	KINECT1
-	AddMOOSVariable("KINECT1","KINECT1","IKINECT1",0.08);
-	m_subscribedObstacleSensors.insert("KINECT1");
+	//! @moos_subscribe	RANGECAM1
+	AddMOOSVariable("RANGECAM1","RANGECAM1","RANGECAM1",0.08);
+	m_subscribedObstacleSensors.insert("RANGECAM1");
 
 
 	//! @moos_subscribe	NAVIGATE_TARGET
@@ -660,7 +660,7 @@ void CReacNavPTGApp::prepareObstaclesTemporalWin()
 			if (obj && IS_DERIVED(obj,CObservation))
 			{
 				CObservationPtr obs = CObservationPtr(obj);
-					if ( pVarObs->GetName() == "KINECT1" )  // Kinect observations have a special process
+					if ( pVarObs->GetName() == "RANGECAM1" )  // Observations from range cameras have a special process
 					m_obs_win[ mrpt::system::now() ] = obs;
 				else
 					m_last_observations[*itS] = obs;
@@ -669,7 +669,7 @@ void CReacNavPTGApp::prepareObstaclesTemporalWin()
 		}
 	}
 
-	// 2. Delete old obs in m_obs_win, kinect observations
+	// 2. Delete old obs in m_obs_win, range camera observations
 	size_t num_obs_to_delete = 0;
 
 	for ( std::map<mrpt::system::TTimeStamp, mrpt::obs::CObservationPtr>::const_iterator it = m_obs_win.begin();
@@ -703,7 +703,7 @@ void CReacNavPTGApp::prepareObstaclesTemporalWin()
 		}
 	}
 
-	// 4. Update kinect observations thar are in the temporal window in the obstacle point map
+	// 4. Update range camera observations thar are in the temporal window in the obstacle point map
 	CMOOSVariable *pVarLoc = GetMOOSVar( "LOCALIZATION_PF" );
 	if(pVarLoc)
 	{
@@ -811,7 +811,7 @@ void CReacNavPTGApp::prepareObstaclesPoseWin()
 			if (obj && IS_DERIVED(obj,CObservation))
 			{
 				CObservationPtr obs = CObservationPtr(obj);
-				if ( pVarObs->GetName() == "KINECT1" )  // Kinect observations have a special process
+				if ( pVarObs->GetName() == "RANGECAM1" )  // Observations from range cameras have a special process
 				{
 					if ( curPoseOk ) cout << "Current pose OK! "; else cout << "Bad current pose! ";
 					if ( curPoseOk && !insertIntoPoseGrid( curPose, obs, index_obs_in_current_pose ) )
@@ -840,7 +840,7 @@ void CReacNavPTGApp::prepareObstaclesPoseWin()
 			}
 		}
 	}
-	// 4. Update kinect observations thar are in the pose window in the obstacle point map
+	// 4. Update range camera observations thar are in the pose window in the obstacle point map
 
 	if( curPoseOk )
 	{

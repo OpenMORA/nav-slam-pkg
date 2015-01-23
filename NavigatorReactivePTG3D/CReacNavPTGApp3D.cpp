@@ -34,9 +34,6 @@
   */
 
 #include "CReacNavPTGApp3D.h"
-#include <sstream>
-#include <iomanip>
-#include <iostream>
 
 
 using namespace std;
@@ -124,14 +121,18 @@ bool CReacNavPTGApp3D::DoNavigatorReset()
 		m_navigator.m_logFile = NULL;
 		m_navigator.EnableLogFile(m_navigator.m_logFile);
 
-		//! @moos_param  Opengl_scene
-		m_visualization = m_ini.read_bool("","Opengl_scene", 0, false);
 		//! @moos_param  Memory_on
 		m_memory_on = m_ini.read_bool("","Memory_on", 1, false);
-		//! @moos_param  Vred_a
-		vred_a = m_ini.read_float("","Vred_a", 1, false);
-		//! @moos_param  Vred_b
-		vred_b = m_ini.read_float("","Vred_b", 0.2, false);
+		//! @moos_param  Memory_visualization A opengl visualization of the local memory (only works if the memory is on)
+		m_visualization = (m_memory_on && m_ini.read_bool("","Memory_visualization", 0, false));
+		//! @moos_param  Speed_factor_obs Used to scale the robot speed according to the obstacles distribution (in TP-Space)
+		speed_factor_obs = m_ini.read_float("","Speed_factor_obs", 1, false);
+		//! @moos_param  Speed_factor_cons Used to scale the robot speed according to the obstacles distribution (in TP-Space)
+		speed_factor_cons = m_ini.read_float("","Speed_factor_cons", 0.2, false);
+		//! @moos_param  v_accel_lim Defines the maximum acceleration allowed in m/s2
+		m_av_lim = m_ini.read_float("","v_accel_lim", 0.5f, true);
+		//! @moos_param  w_accel_lim Defines the maximum angular acceleration allowed in deg/s2
+		m_aw_lim = DEG2RAD(m_ini.read_float("","w_accel_lim", 90.f, true));
 		//! @moos_param  VMIN_MPS
 		m_minv = m_ini.read_float("","VMIN_MPS", 0.1, false);
 		//! @moos_param  WMIN_DEGPS
@@ -146,13 +147,12 @@ bool CReacNavPTGApp3D::DoNavigatorReset()
 		m_ird_warning = 0;
 
 		//Speed initial values
-		m_navigator.m_dynfeatures.new_cmd_v = 0.0;
-		m_navigator.m_dynfeatures.new_cmd_w = 0.0;
+		m_navigator.m_dynfeatures.new_cmd_v = 0.f;
+		m_navigator.m_dynfeatures.new_cmd_w = 0.f;
 
 		//Set the initial state as PAUSED
 		m_navigator.m_navstate = PAUSED;
 		printf("[NavigatorReactive]: Initialized as PAUSED\n");
-
 		
 		//Create the collision grid
 		m_navigator.PTGGridBuilder(m_ini);
@@ -160,7 +160,6 @@ bool CReacNavPTGApp3D::DoNavigatorReset()
 		//Necesary variables to save information in the LogFile
 		m_navigator.m_HLFRs.resize( m_navigator.m_ptgmultilevel.size() );
 		m_navigator.m_newLogRec.infoPerPTG.resize( m_navigator.m_ptgmultilevel.size() );
-		
 		
 		return true;
 	}
@@ -177,9 +176,8 @@ bool CReacNavPTGApp3D::Iterate()
 {
 	try
 	{
-		// It runs the the reactive algorithm.
+		//Run the the reactive algorithm.
 		return DoReactiveNavigation();
-
 	}
 	catch (std::exception &e)
 	{
@@ -200,12 +198,19 @@ bool CReacNavPTGApp3D::DoRegistrations()
 	//! @moos_subscribe	LOCALIZATION
 	AddMOOSVariable("LOCALIZATION", "LOCALIZATION", "LOCALIZATION", 0);	
 
-	//! @moos_subscribe	LASER1, LASER2
-	AddMOOSVariable("LASER1","LASER1","LASER1", 0);
-	AddMOOSVariable("LASER2","LASER2","LASER2", 0);
+	//! @moos_subscribe	LASER (as many as are specified in the config file)
+	for (unsigned int i=1; i<=m_navigator.m_robot.m_lasers.size(); i++)
+	{
+		string lasername = format("LASER%d",i);
+		AddMOOSVariable(lasername, lasername, lasername, 0);
+	}
 
-	//! @moos_subscribe	KINECT1
-	AddMOOSVariable("KINECT1", "KINECT1", "KINECT1", 0);
+	//! @moos_subscribe	RANGECAM (as many as are specified in the config file)
+	for (unsigned int i=1; i<=m_navigator.m_robot.m_rangecams.size(); i++)
+	{
+		string rangecam_name = format("RANGECAM%d",i);
+		AddMOOSVariable(rangecam_name, rangecam_name, rangecam_name, 0);
+	}
 	
 	//! @moos_subscribe	NAVIGATE_TARGET
 	AddMOOSVariable("NAVIGATE_TARGET", "NAVIGATE_TARGET", "NAVIGATE_TARGET", 0);
@@ -299,10 +304,7 @@ bool CReacNavPTGApp3D::OnNewMail(MOOSMSG_LIST &NewMail)
 bool CReacNavPTGApp3D::DoReactiveNavigation()
 {
 	try
-	{
-		//CTicTac	ctest;
-		//ctest.Tic();
-		
+	{	
 		float vaux,waux;
 		unsigned int too_near_obstacles = 0;
 		float pose_estimation_goodness;
@@ -312,7 +314,7 @@ bool CReacNavPTGApp3D::DoReactiveNavigation()
 
 
 		// Do navigation step:
-		// --------------------------------------------------
+		// -----------------------------------------------------------------
 		switch (m_navigator.m_navstate)
 		{
 		case (CANCELLED):			
@@ -322,15 +324,13 @@ bool CReacNavPTGApp3D::DoReactiveNavigation()
 		case (PAUSED):
 			//Only Update the robot pose
 			m_last_pose = m_navigator.m_dynfeatures.curpose;
-			getCurrentPoseAndSpeeds( m_navigator.m_dynfeatures.curpose, vaux, waux);
-			m_navigator.m_robmov.setRealPose( m_navigator.m_dynfeatures.curpose);			
+			getCurrentPoseAndSpeeds( m_navigator.m_dynfeatures.curpose, vaux, waux);		
 			break;
 
 		case (WAITING):
 			//Update the robot pose
 			m_last_pose = m_navigator.m_dynfeatures.curpose;
-			getCurrentPoseAndSpeeds( m_navigator.m_dynfeatures.curpose, vaux, waux);
-			m_navigator.m_robmov.setRealPose( m_navigator.m_dynfeatures.curpose);			
+			getCurrentPoseAndSpeeds( m_navigator.m_dynfeatures.curpose, vaux, waux);		
 			
 			//Read sensor measurements and save them in the reactive class variables
 			sensorDataToReactive(m_navigator);
@@ -388,7 +388,6 @@ bool CReacNavPTGApp3D::DoReactiveNavigation()
 			//Update the robot pose
 			m_last_pose = m_navigator.m_dynfeatures.curpose;
 			getCurrentPoseAndSpeeds( m_navigator.m_dynfeatures.curpose, vaux, waux);
-			m_navigator.m_robmov.setRealPose( m_navigator.m_dynfeatures.curpose);
 
 			//Read sensor measurements and save them in the reactive class variables
 			sensorDataToReactive(m_navigator);
@@ -439,41 +438,22 @@ bool CReacNavPTGApp3D::DoReactiveNavigation()
 				m_obs_average += weight*TPObstacles_ptgs[i];
 				weight_sum += weight;
 			}
-
 			m_obs_average = m_obs_average/float(weight_sum);
-			//cout << endl << "Obs_average: " << m_obs_average;
 
-			//Respect max and min speed (Although it is not exact due to the filter...)
-			m_speed_reducer = vred_a*m_obs_average + vred_b;
-			if ((m_navigator.m_dynfeatures.new_cmd_v > 0)&&(m_speed_reducer*m_navigator.m_dynfeatures.new_cmd_v < m_minv) && (abs(m_speed_reducer*m_navigator.m_dynfeatures.new_cmd_w) < m_minw))
-			{
-				if (m_speed_reducer*m_navigator.m_dynfeatures.new_cmd_v/m_minv < abs(m_speed_reducer*m_navigator.m_dynfeatures.new_cmd_w)/m_minw)
-					m_speed_reducer = abs(m_minw/m_navigator.m_dynfeatures.new_cmd_w);
 
-				else
-					m_speed_reducer = m_minv/m_navigator.m_dynfeatures.new_cmd_v;
-			}
+			//Adapt the robot speed to the spatial obstacle distribution
+			AdaptSpeedToObstacles();
 
-			else if ((m_speed_reducer*m_navigator.m_dynfeatures.new_cmd_v > m_maxv)||(abs(m_speed_reducer*m_navigator.m_dynfeatures.new_cmd_w) > m_maxw))
-			{
-				if (m_speed_reducer*m_navigator.m_dynfeatures.new_cmd_v/m_maxv < abs(m_speed_reducer*m_navigator.m_dynfeatures.new_cmd_w)/m_maxw)
-					m_speed_reducer = abs(m_maxw/m_navigator.m_dynfeatures.new_cmd_w);
-
-				else
-					m_speed_reducer = m_maxv/m_navigator.m_dynfeatures.new_cmd_v;
-			}
-
+			//Stop if obstacles are too close
 			if ((too_near_obstacles > 0.5*TPObstacles_ptgs.size()) || m_ird_warning == 1)
 			{
 				m_navigator.m_dynfeatures.new_cmd_v = 0;
 				m_navigator.m_dynfeatures.new_cmd_w = 0;
 			}
 
-			//Filter speed commmands
-			//float period = 1/m_ini.read_float("","AppTick", 10, true);
-			float alfa = m_reactive_period/(m_reactive_period + m_navigator.m_dynfeatures.ROBOTMODEL_TAU);
-			m_navigator.m_dynfeatures.new_cmd_v = m_speed_reducer*alfa*m_navigator.m_dynfeatures.new_cmd_v + (1-alfa)*m_navigator.m_dynfeatures.last_cmd_v;
-			m_navigator.m_dynfeatures.new_cmd_w = m_speed_reducer*alfa*m_navigator.m_dynfeatures.new_cmd_w + (1-alfa)*m_navigator.m_dynfeatures.last_cmd_w;
+			//Apply acceleration limits (if necessary)
+			ApplyAccelerationLimits();
+
 
 			//Change to "PAUSED" state
 			if ((m_navigator.m_reactiveparam.rel_Target.norm() < 0.3)&&(m_navigator.m_dynfeatures.new_cmd_v < 0.002))
@@ -494,6 +474,7 @@ bool CReacNavPTGApp3D::DoReactiveNavigation()
 				printf("[NavigatorReactive]: WAITING\n");
 			}
 
+			//Publish the new velocity commands
 			changeSpeeds(m_navigator.m_dynfeatures.new_cmd_v,m_navigator.m_dynfeatures.new_cmd_w);
 
 
@@ -507,11 +488,11 @@ bool CReacNavPTGApp3D::DoReactiveNavigation()
 			break;
 		}
 
-		//cout << endl << "Tiempo total: " << ctest.Tac();
 		m_reactive_period = m_reactive_clock.Tac();
 		m_reactive_clock.Tic();
-		//cout << endl << "[NavigatorReactive3D]: Reactive period: " << m_reactive_period << " seconds";
 		m_iteration++;
+
+		//cout << endl << "[NavigatorReactive3D]: Reactive period: " << m_reactive_period << " seconds";
 
 		return true;
 	}
@@ -519,6 +500,48 @@ bool CReacNavPTGApp3D::DoReactiveNavigation()
 	{
 		return MOOSFail(e.what() );
 	}
+}
+
+/** Adapt the robot speed to the obstacle configuration in the TP-Space.
+ */
+void CReacNavPTGApp3D::AdaptSpeedToObstacles()
+{
+	m_speed_reducer = speed_factor_obs*m_obs_average + speed_factor_cons;
+	if ((m_navigator.m_dynfeatures.new_cmd_v > 0.f)&&(m_speed_reducer*m_navigator.m_dynfeatures.new_cmd_v < m_minv) && (abs(m_speed_reducer*m_navigator.m_dynfeatures.new_cmd_w) < m_minw))
+	{
+		if (m_speed_reducer*m_navigator.m_dynfeatures.new_cmd_v/m_minv < abs(m_speed_reducer*m_navigator.m_dynfeatures.new_cmd_w)/m_minw)
+			m_speed_reducer = abs(m_minw/m_navigator.m_dynfeatures.new_cmd_w);
+
+		else
+			m_speed_reducer = m_minv/m_navigator.m_dynfeatures.new_cmd_v;
+	}
+
+	else if ((m_speed_reducer*m_navigator.m_dynfeatures.new_cmd_v > m_maxv)||(abs(m_speed_reducer*m_navigator.m_dynfeatures.new_cmd_w) > m_maxw))
+	{
+		if (m_speed_reducer*m_navigator.m_dynfeatures.new_cmd_v/m_maxv < abs(m_speed_reducer*m_navigator.m_dynfeatures.new_cmd_w)/m_maxw)
+			m_speed_reducer = abs(m_maxw/m_navigator.m_dynfeatures.new_cmd_w);
+
+		else
+			m_speed_reducer = m_maxv/m_navigator.m_dynfeatures.new_cmd_v;
+	}
+}
+
+/** Constrain the motion commands (if necessary) according to the acceleration limits.
+ */
+void CReacNavPTGApp3D::ApplyAccelerationLimits()
+{
+	//Warning!!! The v-w proportion is modified
+	
+	//Check av_lim violation:
+	const float v_incr = m_navigator.m_dynfeatures.new_cmd_v - m_navigator.m_dynfeatures.last_cmd_v;
+	if (abs(v_incr) > m_av_lim*m_reactive_period)
+		m_navigator.m_dynfeatures.new_cmd_v =  m_navigator.m_dynfeatures.last_cmd_v + sign(v_incr)*m_av_lim*m_reactive_period;
+
+	//Check aw_lim violation:
+	const float w_incr = m_navigator.m_dynfeatures.new_cmd_w - m_navigator.m_dynfeatures.last_cmd_w;
+	if (abs(w_incr) > m_aw_lim*m_reactive_period)
+		m_navigator.m_dynfeatures.new_cmd_w=  m_navigator.m_dynfeatures.last_cmd_w + sign(w_incr)*m_aw_lim*m_reactive_period;
+
 }
 
 
@@ -628,48 +651,52 @@ void CReacNavPTGApp3D::notifyHeadingDirection(const double heading_dir_angle)
 	m_Comms.Notify("NECKMSG", format("ANG=%.1f,FAST=0,FILTER=1", head ) );
 }
 
-
+/** Read data published by the sensor modules.
+ */
 void CReacNavPTGApp3D::sensorDataToReactive(CReactiveNavigator &nav)
-{
-	CMOOSVariable *pVarLaser1 = GetMOOSVar( "LASER1" );
-	CMOOSVariable *pVarLaser2 = GetMOOSVar( "LASER2" );
-	CMOOSVariable *pVarkinect = GetMOOSVar( "KINECT1" );
-
+{	
 	CSerializablePtr obj;
 
-	//Laser1
-	if(pVarLaser1 && pVarLaser1->IsFresh())
+	const unsigned int num_lasers = m_navigator.m_robot.m_lasers.size();
+	const unsigned int num_rangecams = m_navigator.m_robot.m_rangecams.size();
+
+	//Read lasers
+	for (unsigned int i=0; i<num_lasers; i++)
 	{
-		pVarLaser1->SetFresh(false);
-		//StringToObject(pVarLaser1->GetStringVal(),obj); (deprecated)
-		mrpt::utils::RawStringToObject(pVarLaser1->GetStringRef(),obj);
-		if (obj && IS_CLASS(obj,CObservation2DRangeScan))
-			nav.m_robot.m_lasers[0].m_scan = *CObservation2DRangeScanPtr(obj);
+		string lasername = format("LASER%d", i+1);
+		CMOOSVariable *pVarLaser = GetMOOSVar( lasername );
+
+		if(pVarLaser && pVarLaser->IsFresh())
+		{
+			pVarLaser->SetFresh(false);
+			mrpt::utils::RawStringToObject(pVarLaser->GetStringRef(),obj);
+			if (obj && IS_CLASS(obj,CObservation2DRangeScan))
+				nav.m_robot.m_lasers[i].m_scan = *CObservation2DRangeScanPtr(obj);
+		}
 	}
 
-	//Laser2
-	if(pVarLaser2 && pVarLaser2->IsFresh())
+	//Read range cameras
+	for (unsigned int i=0; i<num_rangecams; i++)
 	{
-		pVarLaser2->SetFresh(false);
-		//StringToObject(pVarLaser2->GetStringVal(),obj);	(deprecated)
-		mrpt::utils::RawStringToObject(pVarLaser2->GetStringRef(),obj);
-		if (obj && IS_CLASS(obj,CObservation2DRangeScan))
-			nav.m_robot.m_lasers[1].m_scan = *CObservation2DRangeScanPtr(obj);
-	}
+		string rangecam_name = format("RANGECAM%d", i+1);
+		CMOOSVariable *pVarRangeCam = GetMOOSVar( rangecam_name );
 
-	//Kinect	
-	if(pVarkinect && pVarkinect->IsFresh())
-	{
-		pVarkinect->SetFresh(false);
-		StringToObject(pVarkinect->GetStringVal(),obj);
-		if (obj && IS_CLASS(obj,CSimplePointsMap))
-			nav.m_robot.m_kinects[0].m_points = *CSimplePointsMapPtr(obj);
+		if(pVarRangeCam && pVarRangeCam->IsFresh())
+		{
+			pVarRangeCam->SetFresh(false);
+			StringToObject(pVarRangeCam->GetStringVal(),obj);
+			if (obj && IS_CLASS(obj,CSimplePointsMap))
+				nav.m_robot.m_rangecams[i] = *CSimplePointsMapPtr(obj);
+		}
 	}
 }
 
-
+/** Initialize the local memory grid.
+ */
 void CReacNavPTGApp3D::InitializeObstacleGrid()
 {
+	m_ini.enableSectionNames();
+	
 	//! @moos_param  Obs_grid_length
 	float grid_length = m_ini.read_float("","Obs_grid_length", 0.8, 1);
 	//! @moos_param  Obs_grid_resolution
@@ -683,19 +710,20 @@ void CReacNavPTGApp3D::InitializeObstacleGrid()
 	//! @moos_param  Occupancy_threshold
 	m_occupancy_threshold = m_ini.read_float("","Occupancy_threshold", 0.8, 1);
 	//! @moos_param  Likelihood_threshold
-	m_reloc_threshold = m_ini.read_float("","Likelihood_threshold", -2, 1);
+	m_reloc_threshold = m_ini.read_float("Localization2D_PF","Likelihood_threshold", -2, 1);
+	printf("\n Likelihood threshold = %f", m_reloc_threshold);
 
 	m_robot_ingrid.x = 0;
 	m_robot_ingrid.y = 0;
 
 	m_dyngrid.resize(m_navigator.m_robot.m_levels.size());
 	for (unsigned int i=0; i < m_dyngrid.size(); i++)
-	{
 		m_dyngrid[i].setSize(-grid_length, grid_length, -grid_length, grid_length, grid_resolution, 0.5);
-	}
+
 }
 
-
+/** Update the local memory grid with the new obstacles
+ */
 void CReacNavPTGApp3D::UpdateObstacleGrid()
 {
 	//First, move the robot respect to the grid and adjust the likelihood values in the grid according to that movement
@@ -767,8 +795,8 @@ void CReacNavPTGApp3D::UpdateObstacleGrid()
 	}
 
 
-	//Second, update the likelihood values according to kinect scan
-	//-------------------------------------------------------------
+	//Second, update the likelihood values according to range images
+	//--------------------------------------------------------------
 
 	float angrot = -m_navigator.m_dynfeatures.curpose.phi();
 	float paso;
@@ -792,9 +820,9 @@ void CReacNavPTGApp3D::UpdateObstacleGrid()
 		obs_in.assign(square(num_col),0);
 		
 		//Vector obs_in is filled with 0 or 1 depending on the presence of any obstacle at each cell (of the grid)
-		for (unsigned int i=0; i<m_navigator.m_robot.m_kinects[0].m_points.size(); i++)
+		for (unsigned int i=0; i<m_navigator.m_robot.m_rangecams[0].size(); i++)
 		{
-			m_navigator.m_robot.m_kinects[0].m_points.getPoint(i, paux);
+			m_navigator.m_robot.m_rangecams[0].getPoint(i, paux);
 
 			//Points rotation and translation
 			paso = paux.x*cos(angrot) + paux.y*sin(angrot) + m_robot_ingrid.x;
@@ -853,13 +881,8 @@ void CReacNavPTGApp3D::UpdateObstacleGrid()
 
 }
 
-float CReacNavPTGApp3D::remainder(float dividend, float divisor)
-{
-	while (dividend > divisor)
-		dividend -= divisor;
-	return dividend;
-}
-
+/** Initialize the opengl scene to show the local memory
+ */
 void CReacNavPTGApp3D::InitializeGridScene()
 {
 	m_navigator.m_window = gui::CDisplayWindow3D::Create();
@@ -875,38 +898,25 @@ void CReacNavPTGApp3D::InitializeGridScene()
 
 	m_navigator.m_scene = m_navigator.m_window->get3DSceneAndLock();
 
-	////The OccupancyGrid is inserted
-	//CSetOfObjectsPtr obj1 = CSetOfObjects::Create();
-	//m_memory.getAs3DObject(obj1);
-	//m_navigator.m_scene->insert(obj1);
-
 	//The "graphicGrid" is inserted 
 	CGridPlaneXYPtr obj2 = CGridPlaneXY::Create(m_dyngrid[0].getXMin(), m_dyngrid[0].getXMax(), m_dyngrid[0].getYMin(), m_dyngrid[0].getYMax(), 0, m_dyngrid[0].getResolution());
 	obj2->setColor(0.1,0.1,0.1);
 	m_navigator.m_scene->insert( obj2 );
 
-	//A representation of the robot is inserted
-	//CBoxPtr obj3 = CBox::Create(TPoint3D(0,0,0),TPoint3D(m_dyngrid[0].getResolution()/3, m_dyngrid[0].getResolution()/6, m_dyngrid[0].getResolution()/6), true, 3.0);
-	//obj3->setLocation(m_robot_ingrid.x, m_robot_ingrid.y, 0);
-	//obj3->setColor(0.8,0,0);
-	//m_navigator.m_scene->insert( obj3 );
-
 	//The robot is inserted
+	float h;
+	for (unsigned int i=0;i<m_navigator.m_robot.m_levels.size();i++)
 	{
-		float h;
-		for (unsigned int i=0;i<m_navigator.m_robot.m_levels.size();i++)
-		{
-			if (i == 0) {h = 0;}
-			else {h = m_navigator.m_robot.m_levels[i-1].m_height + h;}
-			CPolyhedronPtr obj;
-			obj = opengl::CPolyhedron::CreateCustomPrism(m_navigator.m_robot.m_levels[i].m_points, m_navigator.m_robot.m_levels[i].m_height);
-			obj->setName(format("Level%d",i+1));
-			obj->setPose(CPose3D(0,0,h,0,0,0));
-			obj->setColor(0,0,1);
-			obj->setWireframe(true);
-			obj->setLineWidth(2);
-			m_navigator.m_scene->insert( obj );
-		}
+		if (i == 0) {h = 0;}
+		else {h = m_navigator.m_robot.m_levels[i-1].m_height + h;}
+		CPolyhedronPtr robotsec;
+		robotsec = opengl::CPolyhedron::CreateCustomPrism(m_navigator.m_robot.m_levels[i].m_points, m_navigator.m_robot.m_levels[i].m_height);
+		robotsec->setName(format("Level%d",i+1));
+		robotsec->setPose(CPose3D(0,0,h,0,0,0));
+		robotsec->setColor(0,0,1);
+		robotsec->setWireframe(true);
+		robotsec->setLineWidth(2);
+		m_navigator.m_scene->insert( robotsec );
 	}
 
 	//Points are inserted
@@ -918,16 +928,11 @@ void CReacNavPTGApp3D::InitializeGridScene()
 	obj4->enablePointSmooth();
 	TPoint3D paux;
 
-	for (unsigned int i=0;i<m_navigator.m_robot.m_kinects[0].m_points.size();i++)
+	for (unsigned int i=0;i<m_navigator.m_robot.m_rangecams[0].size();i++)
 	{
-		m_navigator.m_robot.m_kinects[0].m_points.getPoint(i, paux);
+		m_navigator.m_robot.m_rangecams[0].getPoint(i, paux);
 		obj4->insertPoint(paux.x, paux.y, paux.z);
 	}
-
-	//Frustum
-	CFrustumPtr obj5 = CFrustum::Create(0.2, 3, 60, 48, 1.5f, true, false);
-	obj5->setLocation( 0, 0, m_navigator.m_robot.m_kinects[0].m_zrel);
-	m_navigator.m_scene->insert( obj5 );
 
 	//Points are inserted
 	CPointCloudPtr obj6 = CPointCloud::Create();
@@ -947,6 +952,8 @@ void CReacNavPTGApp3D::InitializeGridScene()
 	m_navigator.m_window->forceRepaint();
 }
 
+/** Update the local memory visualization
+ */
 void CReacNavPTGApp3D::UpdateGridScene()
 {
 	m_navigator.m_scene = m_navigator.m_window->get3DSceneAndLock();
@@ -982,15 +989,12 @@ void CReacNavPTGApp3D::UpdateGridScene()
 	obj3->setPose(CPose3D(0, 0, 0, m_navigator.m_dynfeatures.curpose.phi(), 0, 0));
 	TPoint3D paux;
 
-	for (unsigned int i=0;i<m_navigator.m_robot.m_kinects[0].m_points.size();i++)
+	for (unsigned int i=0;i<m_navigator.m_robot.m_rangecams[0].size();i++)
 	{
-		m_navigator.m_robot.m_kinects[0].m_points.getPoint(i, paux);
+		m_navigator.m_robot.m_rangecams[0].getPoint(i, paux);
 		obj3->insertPoint(paux.x, paux.y, paux.z);
 	}
 
-	CFrustumPtr obj4 ;
-	obj4 = m_navigator.m_scene->getByClass<CFrustum> (0);
-	obj4->setPose(CPose3D(0,0,m_navigator.m_robot.m_kinects[0].m_zrel,m_navigator.m_dynfeatures.curpose.phi(),0,0));
 
 	CPointCloudPtr obj5;
 	obj5 = m_navigator.m_scene->getByClass<CPointCloud> (1);
@@ -1007,4 +1011,11 @@ void CReacNavPTGApp3D::UpdateGridScene()
 	m_navigator.m_window->updateWindow();
 }
 
-
+/** Remainder function with float numbers
+ */
+float CReacNavPTGApp3D::remainder(float dividend, float divisor)
+{
+	while (dividend > divisor)
+		dividend -= divisor;
+	return dividend;
+}

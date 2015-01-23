@@ -1,10 +1,8 @@
 
 #include "reactnav3D_OM.h"
-#include <mrpt/opengl/CPlanarLaserScan.h>
 #include <mrpt/math/ops_containers.h> // sum()
 #include <mrpt/utils/CFileOutputStream.h>
 #include <mrpt/utils/metaprogramming.h>
-#include <iostream>
 
 
 using namespace std;
@@ -12,7 +10,6 @@ using namespace mrpt;
 using namespace mrpt::obs;
 using namespace mrpt::maps;
 using namespace mrpt::nav;
-using namespace mrpt::opengl;
 using namespace mrpt::math;
 using namespace mrpt::maps;
 
@@ -24,7 +21,7 @@ void CReactiveNavigator::loadRobotConfiguration(CMissionReader2ConfigFile_adapto
 	try
 	{
 		TPoint2D coord;
-		unsigned int num_levels,num_lasers,num_kinects;
+		unsigned int num_levels,num_lasers,num_rangecams;
 		vector <float> xaux,yaux,lasercoord;
 
 		// 1. Read Robot Geometry
@@ -48,42 +45,15 @@ void CReactiveNavigator::loadRobotConfiguration(CMissionReader2ConfigFile_adapto
 			}
 		}
 
-		// 2. Read Lasers
-		//-----------------------
+		// 2. Read sensors config
+		//---------------------------------------------------------------------------------------
 		num_lasers = configRobot.read_int("","N_LASERS", 1, true);
 		m_robot.m_lasers.resize(num_lasers);
 		for (unsigned int i=1;i<=num_lasers;i++)
-		{
-			configRobot.read_vector("",format("LASER%d_POSE",i), vector<float> (0), lasercoord , true);
-			m_robot.m_lasers[i-1].m_scan.maxRange = configRobot.read_float("",format("LASER%d_MAX_RANGE",i), 50, true);
-			m_robot.m_lasers[i-1].m_scan.aperture = configRobot.read_float("",format("LASER%d_APERTURE",i), M_PI, true);
-			m_robot.m_lasers[i-1].m_scan.stdError = configRobot.read_float("",format("LASER%d_STD_ERROR",i), 0.05, true);
-			m_robot.m_lasers[i-1].m_scan.sensorPose.setFromValues(lasercoord[0],lasercoord[1],lasercoord[2],lasercoord[3],lasercoord[4],lasercoord[5]);
 			m_robot.m_lasers[i-1].m_level = configRobot.read_int("",format("LASER%d_LEVEL",i), 1, true);
-			m_robot.m_lasers[i-1].m_segments = configRobot.read_int("",format("LASER%d_SEGMENTS",i), 181, true);
-		}
 
-
-		// 3. Read RGBD cameras
-		//-----------------------
-		num_kinects = configRobot.read_int("","N_KINECTS", 1, true );
-		m_robot.m_kinects.resize(num_kinects);
-		for (unsigned int i=1;i<=num_kinects;i++)
-		{
-			m_robot.m_kinects[i-1].m_level = configRobot.read_int("",format("KINECT%d_LEVEL",i), 1, true);
-			m_robot.m_kinects[i-1].m_xrel = configRobot.read_float("",format("KINECT%d_X",i), 0, true);
-			m_robot.m_kinects[i-1].m_yrel = configRobot.read_float("",format("KINECT%d_Y",i), 0, true);
-			m_robot.m_kinects[i-1].m_zrel = configRobot.read_float("",format("KINECT%d_Z",i), 0, true);
-			m_robot.m_kinects[i-1].m_phi = configRobot.read_float("",format("KINECT%d_PHI",i), 0, true);
-			m_robot.m_kinects[i-1].m_min_range = configRobot.read_float("",format("KINECT%d_MINRANGE",i), 0, true);
-			m_robot.m_kinects[i-1].m_max_range = configRobot.read_float("",format("KINECT%d_MAXRANGE",i), 0, true);
-			m_robot.m_kinects[i-1].m_fov_v = DEG2RAD(configRobot.read_float("",format("KINECT%d_FOV_V",i), 60, true));
-			m_robot.m_kinects[i-1].m_fov_h = DEG2RAD(configRobot.read_float("",format("KINECT%d_FOV_H",i), 60, true));
-			m_robot.m_kinects[i-1].m_pitch_angle = DEG2RAD(configRobot.read_float("",format("KINECT%d_PITCH_ANGLE",i), 60, true));
-			m_robot.m_kinects[i-1].m_rows = configRobot.read_int("",format("KINECT%d_ROWS",i), 10, true);
-			m_robot.m_kinects[i-1].m_columns = configRobot.read_int("",format("KINECT%d_COLUMNS",i), 10, true);
-			m_robot.m_kinects[i-1].m_std_error = configRobot.read_float("",format("KINECT%d_STD_ERROR",i), 0.05, true);
-		}
+		num_rangecams = configRobot.read_int("","N_RANGECAMS", 1, true );
+		m_robot.m_rangecams.resize(num_rangecams);
 
 
 		// 4. Read Parameters for Navigation
@@ -99,10 +69,6 @@ void CReactiveNavigator::loadRobotConfiguration(CMissionReader2ConfigFile_adapto
 		m_dynfeatures.robotMax_V_mps = configRobot.read_float("","VMAX_MPS", 1, true);
 		//! @moos_param WMAX_DEGPS The max robot angular speed
 		m_dynfeatures.robotMax_W_degps = configRobot.read_float("","WMAX_DEGPS", 30, true);
-		//! @moos_param ROBOTMODEL_DELAY The delay until robot reaction
-		m_dynfeatures.ROBOTMODEL_DELAY = configRobot.read_float("","ROBOTMODEL_DELAY", 0, true);
-		//! @moos_param 
-		m_dynfeatures.ROBOTMODEL_TAU = configRobot.read_float("","ROBOTMODEL_TAU", 0, true);
 		//! @moos_param
 		m_dynfeatures.refDistance = configRobot.read_float("","MAX_DISTANCE_PTG", 1, true);
 		//! @moos_param
@@ -140,275 +106,8 @@ void CReactiveNavigator::loadRobotConfiguration(CMissionReader2ConfigFile_adapto
 
 
 
-void CReactiveNavigator::loadMapsfromimages(CMissionReader2ConfigFile_adaptor configRobot)
-{
-	try
-	{
-		COccupancyGridMap2D grid;
-		CImage myImg;
-		bool aux;
-		int family = configRobot.read_int("","FAMILY", 1, true);
-		float resolution = configRobot.read_float("","MAP_RESOLUTION", 1, true);
-
-		for (int i=1;i<=configRobot.read_int("","NUM_MAPS", 1, true);i++)
-		{
-			aux = myImg.loadFromFile(format("map%d_%d.png",family,i),-1);
-			grid.loadFromBitmap(myImg,resolution);
-			m_maps.push_back(grid);
-		}
-		cout << endl << "Maps have been loaded successfully.";
-	}
-	catch( std::exception & e)
-	{
-		cout << e.what() << endl;
-	}
-}
-
-
-
-void CReactiveNavigator::ShowRobotMotion ()
-{
-	m_scene = m_window->get3DSceneAndLock();
-	CPose3D robotpose3d;
-	CRenderizablePtr obj;
-	robotpose3d.x(m_dynfeatures.curpose[0]);
-	robotpose3d.y(m_dynfeatures.curpose[1]);
-	robotpose3d.setYawPitchRoll(m_dynfeatures.curpose[2],0,0);
-
-	//The target is updated
-	{
-		obj = m_scene->getByName("Target");
-		obj->setPose( poses::CPoint3D(m_reactiveparam.WS_Target[0], m_reactiveparam.WS_Target[1], 0));
-		obj->setColor(0.2,0.3,0.9);
-	}
-
-	//The robot pose is updated
-	{
-		float h;
-		for (unsigned int i=0;i<m_robot.m_levels.size();i++)
-		{
-			obj = m_scene->getByName(format("Level%d",i+1));
-
-			if (i == 0) {h = 0;}
-			else { h = m_robot.m_levels[i-1].m_height + h;}
-
-			robotpose3d.z(h);
-			obj->setPose(robotpose3d);
-		}
-	}
-
-	//The laserscan is inserted
-	{
-		CPlanarLaserScanPtr lasobj;
-
-		for (unsigned int i=0;i<m_robot.m_lasers.size();i++)
-		{
-			lasobj = m_scene->getByClass<CPlanarLaserScan> (i);
-			lasobj->setScan(m_robot.m_lasers[i].m_scan);
-			lasobj->setPose(m_dynfeatures.curpose);
-		}
-	}
-
-	//The Kinectscan is inserted
-	{
-		robotpose3d.z(0);
-		TPoint3D point;
-		CPointCloudPtr obj;
-
-		for (unsigned int i=0;i<m_robot.m_kinects.size();i++)
-		{
-			obj = m_scene->getByClass<CPointCloud> (i);
-			obj->clear();
-			obj->setPose(robotpose3d);
-
-			for (unsigned int j=0;j<m_robot.m_kinects[i].m_points.size();j++)
-			{
-				m_robot.m_kinects[i].m_points.getPoint(j,point);
-				obj->insertPoint(point.x,point.y,point.z);
-			}
-		}
-	}
-
-	m_window->unlockAccess3DScene();
-	m_window->addTextMessage(5,5, format("%.02fFPS", m_window->getRenderingFPS()));
-	//mrpt::system::sleep(40);
-	m_window->repaint();
-}
-
-
-
-
-void CReactiveNavigator::InitializeScene()
-{
-	CPose3D robotpose3d;
-	robotpose3d.x(m_dynfeatures.pos_ini[0]);
-	robotpose3d.y(m_dynfeatures.pos_ini[1]);
-	robotpose3d.setYawPitchRoll(m_dynfeatures.pos_ini[2],0,0);
-
-
-	//The display window is created
-
-	m_window = gui::CDisplayWindow3D::Create();
-	mrpt::global_settings::OCTREE_RENDER_MAX_POINTS_PER_NODE = 10000;  //I don't know how this influences the scene...
-
-	m_window->setWindowTitle("Reactive Navigation. Robot motion simulation");
-	m_window->resize(1800,980);
-	m_window->setPos(50,0);
-
-	m_scene = m_window->get3DSceneAndLock();
-	m_window->setCameraZoom(50);
-
-
-	//The maps are inserted
-	{
-		CSetOfObjectsPtr gl_grid = CSetOfObjects::Create();
-		for (unsigned int i=0;i<m_maps.size();i++)
-		{
-			m_maps[i].getAs3DObject(gl_grid);
-			m_scene->insert(gl_grid);
-		}
-	}
-
-	//A CornerXYZ object is inserted as an absolute frame of reference
-	{
-		CSetOfObjectsPtr obj = opengl::stock_objects::CornerXYZ();
-		obj->setLocation(0,0,0);
-		m_scene->insert( obj );
-	}
-
-	//A reference grid is inserted
-	{
-		CGridPlaneXYPtr obj = opengl::CGridPlaneXY::Create(-16,16,-16,16,0,1);
-		obj->setColor(0.4,0.4,0.4);
-		obj->setLocation(0,0,0);
-		obj->setName("gridref");
-		m_scene->insert( obj );
-
-	}
-
-	//The target is inserted
-	{
-		CDiskPtr obj = opengl::CDisk::Create(0.4, 0.3);
-		obj->setLocation(m_reactiveparam.WS_Target[0], m_reactiveparam.WS_Target[1], 0);
-		obj->setColor(0.2,0.3,0.9);
-		obj->setName("Target");
-		m_scene->insert( obj );
-	}
-
-	//The robot is inserted
-	{
-		float h;
-		for (unsigned int i=0;i<m_robot.m_levels.size();i++)
-		{
-			if (i == 0) {h = 0;}
-			else {h = m_robot.m_levels[i-1].m_height + h;}
-
-			robotpose3d.z(h);
-			CPolyhedronPtr obj;
-			obj = opengl::CPolyhedron::CreateCustomPrism(m_robot.m_levels[i].m_points,m_robot.m_levels[i].m_height);
-			obj->setName(format("Level%d",i+1));
-			obj->setPose(robotpose3d);
-			obj->setColor(0.2,0.5,0.2,1);
-			obj->setWireframe(true);
-			obj->setLineWidth(2);
-			m_scene->insert( obj );
-		}
-	}
-
-	SimulateSensors();
-
-	//The laserscan is inserted
-	{
-		vector <CPlanarLaserScanPtr> gl_scan;
-		CPlanarLaserScanPtr gl_scanind;
-
-		for (unsigned int i=0;i<m_robot.m_lasers.size();i++)
-		{
-			gl_scan.push_back(gl_scanind);
-			gl_scan[i] = CPlanarLaserScan::Create();
-
-			gl_scan[i]->enableLine(true);
-			gl_scan[i]->enableSurface(false);
-			gl_scan[i]->enablePoints(true);
-			gl_scan[i]->setName(format("Laser%d",i+1));
-			gl_scan[i]->setScan(m_robot.m_lasers[i].m_scan);
-			gl_scan[i]->setPose(m_dynfeatures.pos_ini);
-			m_scene->insert(gl_scan[i]);
-		}
-	}
-
-	//The Kinectscan is inserted
-
-	{
-		robotpose3d.z(0);
-		TPoint3D point;
-		vector <CPointCloudPtr> obj;
-		CPointCloudPtr indobj;
-
-		for (unsigned int i=0;i<m_robot.m_kinects.size();i++)
-		{
-			obj.push_back(indobj);
-			obj[i] = opengl::CPointCloud::Create();
-			obj[i]->setPose(robotpose3d);
-			obj[i]->setName(format("Kinect%d",i+1));
-			m_scene->insert(obj[i]);
-			obj[i]->setColor(0,0,1);
-			obj[i]->setPointSize(4.0);
-			obj[i]->enablePointSmooth();
-			for (unsigned int j=0;j<m_robot.m_kinects[i].m_points.size();j++)
-			{
-				m_robot.m_kinects[i].m_points.getPoint(j,point);
-				obj[i]->insertPoint(point.x,point.y,point.z);
-			}
-		}
-	}
-
-	m_window->unlockAccess3DScene();
-	m_window->addTextMessage(5,5, format("%.02fFPS", m_window->getRenderingFPS()));
-	m_window->repaint();
-}
-
-
-
-void CReactiveNavigator::SimulateSensors()
-{
-	CPose2D robotpose2d;
-	CPose3D robotpose3d;
-	CPose3D kinectrelpose(0,0,0,0,0,0);
-	m_robmov.getRealPose(robotpose2d);
-	robotpose3d.x(robotpose2d[0]);
-	robotpose3d.y(robotpose2d[1]);
-	robotpose3d.z(0);
-	robotpose3d.setYawPitchRoll(robotpose2d[2],0,0);
-
-	//Laser scans
-
-	for (unsigned int i=0;i<m_robot.m_lasers.size();i++)
-	{
-		m_maps[m_robot.m_lasers[i].m_level-1].laserScanSimulator( m_robot.m_lasers[i].m_scan
-			, robotpose2d, 0.5f, m_robot.m_lasers[i].m_segments, m_robot.m_lasers[i].m_scan.stdError, 1, 0);
-	}
-
-	//Kinect scans
-
-	for (unsigned int i=0;i<m_robot.m_kinects.size();i++)
-	{
-		kinectrelpose.x(m_robot.m_kinects[i].m_xrel);
-		kinectrelpose.y(m_robot.m_kinects[i].m_yrel);
-		kinectrelpose.z(m_robot.m_kinects[i].m_zrel);
-		kinectrelpose.setYawPitchRoll(m_robot.m_kinects[i].m_phi, 0, 0);
-		m_robot.m_kinects[i].KinectScan(m_maps, m_robot.m_levels, robotpose3d, kinectrelpose);
-	}
-}
-
-
-
 void CReactiveNavigator::InitializeRobotMotion()
 {
-	m_robmov.resetStatus();
-	m_robmov.setOdometryErrors(0);	//Set odometry errors
-	m_robmov.setDelayModelParams(m_dynfeatures.ROBOTMODEL_TAU, m_dynfeatures.ROBOTMODEL_DELAY);
-	m_robmov.setRealPose(m_dynfeatures.pos_ini);
 	m_dynfeatures.curpose = m_dynfeatures.pos_ini;
 	m_dynfeatures.curposeodo = m_dynfeatures.pos_ini;
 	m_dynfeatures.last_cmd_v = 0;
@@ -419,169 +118,6 @@ void CReactiveNavigator::InitializeRobotMotion()
 
 
 
-void CReactiveNavigator::SimulateRobotMotion(float dt)
-{
-	m_robmov.movementCommand(m_dynfeatures.new_cmd_v, m_dynfeatures.new_cmd_w);
-	m_robmov.simulateInterval(dt);
-	m_robmov.getRealPose( m_dynfeatures.curpose);
-}
-
-
-
-void CRobotKinects::CorrectFloorPoints(CPose3D kinectrelpose)
-{
-	TSegment3D ray;
-	TPoint3D p1,p2,pint;
-	TObject3D pintobj;
-	TPlane ground(0,0,1,0);
-	vector <float> x, y, z;
-
-	m_points.getAllPoints(x,y,z,1);
-	p2.x = kinectrelpose[0];
-	p2.y = kinectrelpose[1];
-	p2.z = kinectrelpose[2];
-	ray.point2 = p2;
-
-	for (unsigned int i=0; i<m_points.size();i++)
-	{
-		if (z[i] < 0)
-		{
-			p1.x = x[i];
-			p1.y = y[i];
-			p1.z = z[i];
-			ray.point1 = p1;
-			intersect(ray,ground,pintobj);
-			pintobj.getPoint(pint);
-			x[i] = pint.x;
-			y[i] = pint.y;
-			z[i] = pint.z;
-		}
-	}
-	m_points.setAllPoints(x,y,z);
-}
-
-
-
-void CRobotKinects::CorrectCeiling(CPose3D kinectrelpose, float height)
-{
-	TSegment3D ray;
-	TPoint3D p1,p2,pint;
-	TObject3D pintobj;
-	TPlane ceiling(0,0,1,-height);
-	vector <float> x, y, z;
-
-	m_points.getAllPoints(x,y,z,1);
-
-	p2.x = kinectrelpose[0];
-	p2.y = kinectrelpose[1];
-	p2.z = kinectrelpose[2];
-	ray.point2 = p2;
-
-	for (unsigned int i=0; i<m_points.size();i++)
-	{
-		if (z[i] > height)
-		{
-			p1.x = x[i];
-			p1.y = y[i];
-			p1.z = z[i];
-			ray.point1 = p1;
-			intersect(ray,ceiling,pintobj);
-			pintobj.getPoint(pint);
-			x[i] = pint.x;
-			y[i] = pint.y;
-			z[i] = pint.z;
-		}
-	}
-	m_points.setAllPoints(x,y,z);
-}
-
-
-void CRobotKinects::CorrectRanges(CPose3D kinectrelpose)
-{
-	vector <float> x, y, z;
-	vector <bool> deletion;
-
-	m_points.getAllPoints(x,y,z,1);
-
-	for (unsigned int i=0; i<m_points.size();i++)
-	{
-		if ((kinectrelpose.distance3DTo(x[i],y[i],z[i]) < m_min_range)||(kinectrelpose.distance3DTo(x[i],y[i],z[i]) > m_max_range))
-		{
-			deletion.push_back(1);
-		}
-		else
-		{
-			deletion.push_back(0);
-		}
-	}
-	m_points.applyDeletionMask(deletion);
-}
-
-
-void CRobotKinects::KinectScan(vector <COccupancyGridMap2D> m_maps, vector <CRobotLevel> m_levels, CPose3D robotpose,CPose3D kinectrelpose)
-{
-	unsigned int acc_factor = max(1,mrpt::utils::round(80.0/m_columns));
-	float h = 0, incrz;
-	CObservation2DRangeScan m_auxlaser;
-	CPose2D scanpose2d;
-	TPoint3D point;
-	CSimplePointsMap row_points;
-	row_points.insertionOptions.minDistBetweenLaserPoints = 0;
-	m_points.clear();
-
-	scanpose2d.x(robotpose[0]);
-	scanpose2d.y(robotpose[1]);
-	scanpose2d.phi(robotpose[3]);
-	m_auxlaser.setSensorPose(kinectrelpose);
-	m_auxlaser.aperture = m_fov_h;
-	//m_auxlaser.beamAperture = 0.01;  //Optional
-
-	for (unsigned int k=0;k<m_maps.size();k++)
-	{
-		m_maps[k].laserScanSimulator( m_auxlaser, scanpose2d, 0.5f, acc_factor*m_columns, m_std_error, 1, 0);  //"Trick" to increase accuracy
-		row_points.insertObservation( &m_auxlaser);
-
-		for (unsigned int i=0;i<m_rows;i++)
-		{
-			for (unsigned int j=0;j<m_columns;j++)
-			{
-				if (row_points.size() > acc_factor*j)
-				{
-					row_points.getPoint(acc_factor*j,point);
-					incrz = kinectrelpose.distance3DTo(point.x,point.y,point.z)*tan((float(i)/(m_rows-1)-0.5)*m_fov_v)*cos((float(j)/(m_columns-1)-0.5)*m_fov_h);
-					point.z = point.z + incrz;
-					if (m_maps.size() == 1)
-					{
-						m_points.insertPoint(point);
-					}
-					else
-					{
-						if (k == 0)
-						{
-							if (point.z < m_levels[k].m_height) {m_points.insertPoint(point);}
-						}
-						else if (k == m_maps.size() - 1)
-						{
-							if (point.z >= h) {m_points.insertPoint(point);}
-						}
-						else
-						{
-							if ((point.z >= h)&&(point.z < h + m_levels[k].m_height)) {m_points.insertPoint(point);}
-						}
-					}
-				}
-			}
-		}
-		row_points.clear();
-		h = h + m_levels[k].m_height;
-	}
-
-	CorrectFloorPoints(kinectrelpose);
-	CorrectCeiling(kinectrelpose, 3);  //Default: ceiling height = 3 meters
-	CorrectRanges(kinectrelpose);
-}
-
-
 void CReactiveNavigator::ClassifyPointsInLevels()
 {
 	unsigned int cont;
@@ -590,15 +126,14 @@ void CReactiveNavigator::ClassifyPointsInLevels()
 	TPoint3D paux;
 	m_obstacles_inlevels.clear();
 	m_obstacles_inlevels.resize(m_robot.m_levels.size());
+
 	for (unsigned int i=0;i<m_robot.m_lasers.size();i++)
-	{
 		m_obstacles_inlevels[m_robot.m_lasers[i].m_level-1].insertObservation(&m_robot.m_lasers[i].m_scan);
-	}
-	for (unsigned int i=0;i<m_robot.m_kinects.size();i++)
-	{
-		for (unsigned int j=0;j<m_robot.m_kinects[i].m_points.size();j++)
+
+	for (unsigned int i=0;i<m_robot.m_rangecams.size();i++)
+		for (unsigned int j=0;j<m_robot.m_rangecams[i].size();j++)
 		{
-			m_robot.m_kinects[i].m_points.getPoint(j,paux.x,paux.y,paux.z);
+			m_robot.m_rangecams[i].getPoint(j,paux.x,paux.y,paux.z);
 			clasified  = 0;
 			cont  = 0;
 			h = 0;
@@ -620,7 +155,6 @@ void CReactiveNavigator::ClassifyPointsInLevels()
 				}
 			}
 		}
-	}
 }
 
 
@@ -637,7 +171,7 @@ void CReactiveNavigator::build_PTG_collision_grids(
 	if (verbose)
 		cout << endl << "[build_PTG_collision_grids] Starting... *** THIS MAY TAKE A WHILE, BUT MUST BE COMPUTED ONLY ONCE!! **" << endl;
 
-	utils::CTicTac		tictac;
+	utils::CTicTac	tictac;
 
 	if (verbose)
 		cout << "Computing collision cells for PTG '" << cacheFilename << "'...";
@@ -647,7 +181,6 @@ void CReactiveNavigator::build_PTG_collision_grids(
 	tictac.Tic();
 
 	//const size_t nPaths = PT->getAlfaValuesCount();
-
 
 	// Check for collisions between the robot shape and the grid cells:
 	// ----------------------------------------------------------------------------
@@ -875,7 +408,7 @@ void CReactiveNavigator::ObstaclesToTPSpace()
 
 			// Distances in TP-Space are normalized to [0,1]
 
-			invoperation = 1/m_ptgmultilevel[a].PTGs[0]->refDistance;
+			invoperation = 1.f/m_ptgmultilevel[a].PTGs[0]->refDistance;
 			for (unsigned int k=0;k<Ki;k++)
 				m_ptgmultilevel[a].TPObstacles[k] *= invoperation;
 		}
@@ -899,7 +432,6 @@ void CReactiveNavigator::ApplyHolonomicMethod()
 	{
 		int k;
 		float d, alfa;
-		m_robmov.getRealPose(m_dynfeatures.curpose);
 		m_reactiveparam.rel_Target = m_reactiveparam.WS_Target - m_dynfeatures.curpose;
 
 		for (unsigned int i=0; i<m_ptgmultilevel.size();i++)
@@ -1025,7 +557,6 @@ void CReactiveNavigator::PTG_Evaluator(
 		factor5 = min( likely_v,likely_w );
 
 
-
 		// Factor6: Fast when free space
 		// -----------------------------------------------------
 		float aver_obs = 0;
@@ -1035,8 +566,6 @@ void CReactiveNavigator::PTG_Evaluator(
 		aver_obs = aver_obs/in_TPObstacles.size();
 
 		factor6 = aver_obs*want_v;
-
-
 
 
 		// --------------------
@@ -1069,8 +598,7 @@ void CReactiveNavigator::PTG_Evaluator(
 			else
 			{
 				// General case:
-				in_holonomicMovement.evaluation = (
-				                                      factor1 * m_reactiveparam.weights[0] +
+				in_holonomicMovement.evaluation = (   factor1 * m_reactiveparam.weights[0] +
 				                                      factor2 * m_reactiveparam.weights[1] +
 				                                      factor3 * m_reactiveparam.weights[2] +
 				                                      factor4 * m_reactiveparam.weights[3] +
@@ -1238,8 +766,8 @@ void CReactiveNavigator::SaveInLogFile( CStream *logFile )
 	this->m_newLogRec.w							= m_dynfeatures.new_cmd_w;
 	this->m_newLogRec.nSelectedPTG				= m_reactiveparam.m_ptgselected;
 	this->m_newLogRec.executionTime				= 0;
-	this->m_newLogRec.actual_v					= m_robmov.getV();
-	this->m_newLogRec.actual_w					= m_robmov.getW();
+	//this->m_newLogRec.actual_v				= 0;
+	//this->m_newLogRec.actual_w				= 0;
 	//this->m_newLogRec.estimatedExecutionPeriod = ...;
 	this->m_newLogRec.timestamp					= 0;
 	this->m_newLogRec.nPTGs						= m_ptgmultilevel.size();
@@ -1301,13 +829,3 @@ void CReactiveNavigator::SaveInLogFile( CStream *logFile )
 }
 
 
-//CReactiveNavigator::CReactiveNavigator ()
-//{
-//	configRobot = NULL;
-//}
-
-
-//CRobotShape::CRobotShape()
-//{
-//	loadRobotConfiguration();
-//}

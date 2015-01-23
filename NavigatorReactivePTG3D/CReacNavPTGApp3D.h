@@ -30,8 +30,8 @@
 #define CReacNavPTGApp_H
 
 #include <mrpt/utils.h>
-#include <COpenMORAMOOSApp.h>
 #include "reactnav3D_OM.h"
+//#include <COpenMORAMOOSApp.h> //Already included in "reactnav3D_OM.h"
 
 
 class CReacNavPTGApp3D : public COpenMORAApp
@@ -56,8 +56,10 @@ protected:
 	float								m_reloc_threshold;
 	float								m_obs_average;
 	float								m_speed_reducer;
-	float								vred_a;
-	float								vred_b;
+	float								speed_factor_obs;
+	float								speed_factor_cons;
+	float								m_av_lim;
+	float								m_aw_lim;
 	float								m_minv;
 	float								m_minw;
 	float								m_maxv;
@@ -101,6 +103,10 @@ protected:
     bool DoNavigatorReset();
 
 	void sensorDataToReactive(CReactiveNavigator &nav);
+
+	void AdaptSpeedToObstacles();
+
+	void ApplyAccelerationLimits();
 
 	void InitializeObstacleGrid();
 

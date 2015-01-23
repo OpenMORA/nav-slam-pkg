@@ -1,8 +1,6 @@
 
 #include <mrpt/obs/CObservation2DRangeScan.h>
 #include <mrpt/maps/CSimplePointsMap.h>
-#include <mrpt/maps/COccupancyGridMap2D.h>
-#include <mrpt/utils/CRobotSimulator.h>
 #include <mrpt/poses.h>
 #include <mrpt/opengl.h>
 #include <mrpt/gui/CDisplayWindow3D.h>
@@ -16,37 +14,10 @@ public:
 	std::vector <mrpt::math::TPoint2D>	m_points;
 };
 
-
-class CRobotKinects {
-public:
-	mrpt::maps::CSimplePointsMap	m_points;
-	float				m_xrel;
-	float				m_yrel;
-	float				m_zrel;
-	float				m_phi;
-	int					m_level;
-	float				m_min_range;
-	float				m_max_range;
-	float				m_fov_v;
-	float				m_fov_h;
-	float				m_pitch_angle;
-	unsigned int		m_rows;
-	unsigned int		m_columns;
-	float				m_std_error;
-	void CorrectFloorPoints(mrpt::poses::CPose3D kinectrelpose);
-	void CorrectCeiling(mrpt::poses::CPose3D kinectrelpose, float height);
-	void CorrectRanges(mrpt::poses::CPose3D kinectrelpose);
-	void KinectScan(std::vector <mrpt::maps::COccupancyGridMap2D> m_maps,
-					std::vector <CRobotLevel> m_levels,
-					mrpt::poses::CPose3D robotpose,
-					mrpt::poses::CPose3D kinectpose);
-};
-
 class CRobotLasers {
 public:
 	mrpt::obs::CObservation2DRangeScan m_scan;
 	int	m_level;
-	int	m_segments;
 };
 
 
@@ -54,7 +25,7 @@ class CRobot3D {
 public:
 	std::vector <CRobotLevel>	m_levels;
 	std::vector <CRobotLasers>	m_lasers;
-	std::vector <CRobotKinects>	m_kinects;
+	std::vector <mrpt::maps::CSimplePointsMap>	m_rangecams;
 };
 
 
@@ -83,8 +54,6 @@ public:
 	mrpt::poses::CPose2D curpose;			// Updated pose
 	float   robotMax_V_mps;					// Robot max. speed in m/s
 	float   robotMax_W_degps;				// Robot max. angular speed in rad/s
-	float	ROBOTMODEL_TAU;					// Param for the motor system modelation
-	float	ROBOTMODEL_DELAY;				// Param for the motor system modelation
 	float	last_cmd_v;
 	float	last_cmd_w;
 	float	new_cmd_v;
@@ -112,8 +81,6 @@ public:
 	CRobot3D						m_robot;
 	CDynfeatures					m_dynfeatures;
 	CReactiveparam					m_reactiveparam;
-	std::vector <mrpt::maps::COccupancyGridMap2D>	m_maps;
-	mrpt::utils::CRobotSimulator	m_robmov;
 	mrpt::gui::CDisplayWindow3DPtr	m_window;
 	mrpt::opengl::COpenGLScenePtr	m_scene;
 	std::vector <CPTGmultilevel>	m_ptgmultilevel;
@@ -124,26 +91,11 @@ public:
 	mrpt::nav::CHolonomicVFF				*m_holonomicVFF;
 	std::vector <mrpt::nav::CHolonomicND*>	m_holonomicND;
 
-	//Load the robot configuration: shape, lasers, kinects and dynamical parameters
+	//Load the robot configuration: shape, lasers, range cameras and dynamical parameters
 	void loadRobotConfiguration(CMissionReader2ConfigFile_adaptor configRobot);
-
-	//Load the family of maps indicated, and the desired number of maps belonging to this family at a given resolution
-	void loadMapsfromimages(CMissionReader2ConfigFile_adaptor configRobot);
 
 	//Initialize the kinematical and dynamical parameters of the robot motion
 	void InitializeRobotMotion();
-
-	//Move the robot according to the new commands obtained from PTGs
-	void SimulateRobotMotion(float dt);
-
-	//Simulate a scan of every sensors
-	void SimulateSensors();
-
-	//Initialize the simulator 3D scene
-	void InitializeScene();
-
-	//Update the 3D scene with the new robot pose and sensor measurements
-	void ShowRobotMotion();
 
 	//Sort the points (obstacles) detected by sensors in the different height levels of the robot
 	void ClassifyPointsInLevels();
@@ -188,8 +140,5 @@ public:
 
 	//Auxiliary function that sets up the log file recording
 	void EnableLogFile(mrpt::utils::CStream *&LogFile);
-
-	//CReactiveNavigator (CMissionReader2ConfigFile_adaptor configRobot):m_holonomicVFF(configRobot), m_holonomicND(configRobot) {};
-	//~CReactiveNavigator ();
 };
 
