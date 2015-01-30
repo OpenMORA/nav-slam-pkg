@@ -12,6 +12,7 @@ using namespace mrpt::maps;
 using namespace mrpt::nav;
 using namespace mrpt::math;
 using namespace mrpt::maps;
+using namespace mrpt::utils;
 
 
 // loadRobotConfiguration: reads the geometric parameters of the robot, as well as the lasers and RGBD cameras configuration
