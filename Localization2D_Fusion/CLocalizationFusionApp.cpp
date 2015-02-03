@@ -57,6 +57,11 @@ bool CLocalizationFusionApp::OnStartUp()
 {
 	EnableCommandMessageFiltering(true);
 
+	m_ini.enableSectionNames(true);
+	//! @moos_param OdoVarName OpenMORA variable from which to read the Odometry
+	OdoVarName = m_ini.read_string("Localization2D_PF", "OdoVarName", "ODOMETRY_OBS_BASE", false);
+	m_ini.disableSectionNames();
+
 	try
 	{
 
@@ -167,8 +172,8 @@ bool CLocalizationFusionApp::DoRegistrations()
 	//! @moos_subscribe ODO_REFERENCE
 	m_Comms.Register("ODO_REFERENCE", 0 );
 	
-	//! @moos_subscribe ODOMETRY_OBS
-	m_Comms.Register("ODOMETRY_OBS", 0 );
+	//! @moos_subscribe <OdoVarName>
+	AddMOOSVariable(OdoVarName, OdoVarName, OdoVarName, 0);
 
 	//! @moos_subscribe LOCALIZATION_PF, LOCALIZATION_COV_PF
 	m_Comms.Register("LOCALIZATION_PF", 0 );
@@ -211,19 +216,9 @@ bool CLocalizationFusionApp::OnNewMail(MOOSMSG_LIST &NewMail)
 				m_last_robot_cov.fromMatlabStringFormat( i->GetString());
 			}
 			else
-			if (MOOSStrCmp(i->GetName(),"ODOMETRY_OBS"))
-			{
-				/*
-				CPose2D  cur_odo;
-				cur_odo.fromString(i->GetString());
-				//float v = 0, w=0;
-				mrpt::system::TTimeStamp time_now = mrpt::system::getCurrentTime();
-				//debug jgmonroy
-				cerr << "Calling UpdateODOMETRY with Timestamp =" << time_now << "\n";
-				m_robot_pose.processUpdateNewOdometry(cur_odo, time_now );
-				*/
+			if (MOOSStrCmp(i->GetName(),OdoVarName))
+			{				
 				CSerializablePtr obj;
-				//StringToObject(i->GetString(),obj);
 				mrpt::utils::RawStringToObject(i->GetString(),obj);
 
 				if (obj && IS_CLASS(obj,CObservationOdometry))
@@ -231,14 +226,10 @@ bool CLocalizationFusionApp::OnNewMail(MOOSMSG_LIST &NewMail)
 					CObservationOdometryPtr cur_odo_ptr = CObservationOdometryPtr( obj );
 					CPose2D cur_odo = cur_odo_ptr->odometry;
 					mrpt::system::TTimeStamp time_now = cur_odo_ptr->timestamp;
-					//cerr << "Processing ODOMETRY: " << cur_odo.asString() << endl;
 					m_robot_pose.processUpdateNewOdometry(cur_odo,time_now);
 				}
-				else
-				{
-					cerr << "ODOMETRY_OBS is not CObservationOdometry" << endl;
-				}
-
+				else				
+					cerr << "ODOMETRY_OBS_BASE is not CObservationOdometry" << endl;
 			}
 			else
 			if( (i->GetName()=="SHUTDOWN") && (MOOSStrCmp(i->GetString(),"true")) )

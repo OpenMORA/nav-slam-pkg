@@ -241,8 +241,7 @@ bool CReacNavPTGApp::OnConnectToServer()
 
 bool CReacNavPTGApp::DoRegistrations()
 {
-	//! @moos_subscribe	ODOMETRY, JOYSTICK_MODE
-    AddMOOSVariable("ODOMETRY",  "ODOMETRY","ODOMETRY", 0.1 );
+	//! @moos_subscribe	JOYSTICK_MODE    
 	AddMOOSVariable("JOYSTICK_MODE", "JOYSTICK_MODE", "JOYSTICK_MODE", 0);
 
 	//! @moos_subscribe	LOCALIZATION, LOCALIZATION_COV

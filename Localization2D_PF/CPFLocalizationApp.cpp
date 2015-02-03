@@ -36,6 +36,7 @@
 #include <mrpt/maps/CMultiMetricMap.h>
 #include <mrpt/maps/CSimpleMap.h>
 #include <mrpt/obs/CActionCollection.h>
+#include <mrpt/obs/CObservationOdometry.h>
 #include <mrpt/utils/CFileGZInputStream.h>
 #include <mrpt/utils/CFileGZOutputStream.h>
 #include <mrpt/maps/CMultiMetricMap.h>
@@ -118,6 +119,8 @@ bool CPFLocalizationApp::OnStartUp()
 		else
 			return MOOSFail("Neither 'simplemap_file' or 'gridmap_image_file' found in mission file. Quitting.");
 
+		//! @moos_param OdoVarName OpenMORA variable from which to read the Odometry
+		OdoVarName = m_ini.read_string("","OdoVarName","ODOMETRY_OBS_BASE",false);
 
 		// Load uniform distribution limits:
 		string   x_min="-1";
@@ -347,10 +350,11 @@ bool CPFLocalizationApp::OnConnectToServer()
 
 
 bool CPFLocalizationApp::DoRegistrations()
-{
-	//! @moos_subscribe ODOMETRY, LASER1, LASER2, LASER3
+{	
+	//! @moos_subscribe <OdoVarName>
+	AddMOOSVariable(OdoVarName, OdoVarName, OdoVarName, 0);
 
-	AddMOOSVariable( "ODOMETRY",  "ODOMETRY","ODOMETRY", 0 );
+	//! @moos_subscribe LASER1, LASER2
     AddMOOSVariable( "LASER1",  "LASER1","LASER1", 0 );
     AddMOOSVariable( "LASER2",  "LASER2","LASER2", 0 );
 
@@ -420,20 +424,28 @@ bool CPFLocalizationApp::ProcessParticleFilter()
 		}
 
 		// Odometry:
-		CMOOSVariable * pVarOdo = GetMOOSVar( "ODOMETRY" );
+		CMOOSVariable * pVarOdo = GetMOOSVar( OdoVarName );
 		if(pVarOdo && pVarOdo->IsFresh())
 		{
 			pVarOdo->SetFresh(false);
-			mrpt::poses::CPose2D  cur_odo;
-			cur_odo.fromString(pVarOdo->GetStringVal());
+			mrpt::utils::CSerializablePtr obj;
+			mrpt::utils::RawStringToObject(pVarOdo->GetStringVal(), obj);
 
-			if (!m_firstOdo)
+			if (obj && IS_CLASS(obj, CObservationOdometry))
 			{
-				odometryIncrement = cur_odo-m_lastOdo;
+				CObservationOdometryPtr cur_odo_ptr = CObservationOdometryPtr(obj);
+				mrpt::poses::CPose2D cur_odo = cur_odo_ptr->odometry;
+				if (!m_firstOdo)
+				{
+					odometryIncrement = cur_odo - m_lastOdo;
+				}
+				m_lastOdo = cur_odo;
+				m_firstOdo = false;				
 			}
-			m_lastOdo = cur_odo;
-			m_firstOdo=false;
-
+			else
+			{
+				cerr << "ODOMETRY_OBS is not CObservationOdometry\n" << endl;
+			}
 		}
 
 		// If the robot didn't move, do not process all the time (bad for particles!)

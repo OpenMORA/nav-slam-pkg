@@ -43,7 +43,8 @@ protected:
 	CFusionPoseEstimator				m_robot_pose;		//!< Latest best estimate of the robot pose
 	mrpt::math::CMatrixDouble33 		m_last_robot_cov;	//!< As a simple solution, just re-publish the covariance "as-is" from our source.
 	bool								m_last_robot_cov_valid;
-	mrpt::math::TPose2D				m_odo_reference;
+	mrpt::math::TPose2D					m_odo_reference;
+	std::string							OdoVarName;			//Name of OpenMORA variable containing the odometry obs
 
     /** called at startup */
     virtual bool OnStartUp();

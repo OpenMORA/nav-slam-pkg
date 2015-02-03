@@ -56,6 +56,8 @@ protected:
 	mrpt::poses::CPose2D	m_lastOdo;
 	bool					m_firstOdo; //!< true if the next one will be the first odometry
 
+	std::string OdoVarName;				// Name of the OpenMORA variable from which to read the odometry
+
 	/** Motion model options */
 	mrpt::obs::CActionRobotMovement2D::TMotionModelOptions	m_motionModel;
 
