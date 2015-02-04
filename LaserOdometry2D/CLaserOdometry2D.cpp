@@ -313,8 +313,7 @@ void CLaserOdometry2D::createImagePyramid()
     {
         unsigned int s = pow(2.f,int(i));
         cols_i = ceil(float(width)/float(s));
-
-		const unsigned int cols_i2 = 2*cols_i;
+		
 		const unsigned int i_1 = i-1;
 
 		//First level -> Filter (not downsampling);
@@ -421,6 +420,8 @@ void CLaserOdometry2D::createImagePyramid()
 					{						
 						float sum = 0.f;
 						float weight = 0.f;
+						const unsigned int cols_i2 = range[i_1].cols();
+
 
 						for (int l=-2; l<3; l++)	
 						{
