@@ -279,6 +279,15 @@ bool CReacNavPTGApp3D::OnNewMail(MOOSMSG_LIST &NewMail)
 			changeSpeeds(m_navigator.m_dynfeatures.new_cmd_v,m_navigator.m_dynfeatures.new_cmd_w);
 		}
 
+		if ((MOOSStrCmp(m.GetKey(), "PNAVIGATORREACTIVEPTG3D_CMD")) && (MOOSStrCmp(m.GetString(), "PAUSE")))
+		{
+			// Canell navigation manually:
+			printf("[NavigatorReactivePTG3D]: Pausing current reactive navigation\n");
+			m_navigator.m_navstate = PAUSED;
+			printf("[NavigatorReactive]: PAUSE\n");			
+		}
+
+
 		if( MOOSStrCmp(m.GetKey(),"IRD_WARNING") )			
 		{
 			if( MOOSStrCmp(m.GetString(),"true") )
