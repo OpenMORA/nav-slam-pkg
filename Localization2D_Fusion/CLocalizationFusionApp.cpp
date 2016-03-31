@@ -28,6 +28,10 @@
 
 
 /**  @moos_module Real-time accurate pose tracking by fusing different localization sources (particle filters, odometry, etc...)
+  *  Currently, the accurate pose is based on the localization provided by the particle filter.
+  *  In between two different pose estimations from the particle filter, this modules fuses the odometry by adding to the last known PF pose the
+  *  odometry increments. Thus, a fast localization can be estimated (using the odometry), while accuracy is provided at a lower rate using the
+  *  PF pose estimation.
   */
 
 #include "CLocalizationFusionApp.h"
@@ -148,7 +152,7 @@ bool CLocalizationFusionApp::PublishCurrentBestLocalization()
 
 		mrpt::vector_byte vec_loc;
 		mrpt::utils::ObjectToOctetVector(locObs.pointer(), vec_loc);
-		//! @moos_publish	LOCALIZATION_OBS  The robot estimated pose uncertainty as mrpt::slam::CObservationOdometry
+		//! @moos_publish	LOCALIZATION_OBS  The robot estimated pose as mrpt::slam::CObservationOdometry
 		m_Comms.Notify("LOCALIZATION_OBS", vec_loc);
 
 
